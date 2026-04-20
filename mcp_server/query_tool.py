@@ -150,7 +150,8 @@ All other stages NOT SUPPORTED : $addFields, $set, $unset, $unwind ...
 
 def apply_json_mango_query(queryset: QuerySet, pipeline: list[dict],
                            allowed_models: list = None, extended_operators: list = None,
-                           text_search_fields: list | str = '*'):
+                           text_search_fields: list | str = '*',
+                           allowed_fields: set | frozenset | list | tuple | None = None):
     """
     Apply a JSON-like query to a Django QuerySet using a subset of MangoDB aggregation pipeline syntax.
     see pipeline_dsl_spec() for details.
@@ -159,6 +160,7 @@ def apply_json_mango_query(queryset: QuerySet, pipeline: list[dict],
     :param allowed_models: List of allowed models for $lookup stages. If None, all models are allowed. Can be the string name or the Model class.
     :param extended_operators: List of Queryset API lookups to support as exetended operators. this interprets {"<field>":{"$<op>": value} as Q({field}__{op}=value)
     :param text_search_fields: List of field names to apply `$text` full-text search to. Use "*" to apply to all CharField and TextField fields of the model. Required if `$text` is used.
+    :param allowed_fields: When a pipeline does not include `$project`, restrict the default output to these field names instead of returning every concrete column on the model. Required to keep non-serializable columns (e.g. GeoDjango PointField) out of the JSON renderer when the caller hasn't projected explicitly. When None, every column is returned — same behaviour as previous versions.
     :return: an iterable (eventually the queryset) of JSON results.
     """
 
@@ -320,6 +322,9 @@ def apply_json_mango_query(queryset: QuerySet, pipeline: list[dict],
     if projection_fields:
         queryset = queryset.values(*projection_fields)
         return _postprocess_projection(queryset, projection_mapping)
+
+    if allowed_fields:
+        return _postprocess_projection(queryset.values(*sorted(allowed_fields)), None)
 
     return _postprocess_projection(queryset.values(), None)
 
@@ -573,6 +578,14 @@ class ModelQueryToolset(metaclass=ModelQueryToolsetMeta):
         self.request = request
 
 
+def _allowed_fields_for(toolset_cls):
+    """Effective declared fields minus excluded fields, or None when the
+    toolset didn't declare `fields` (preserves the unrestricted default)."""
+    if toolset_cls is None or toolset_cls.fields is None:
+        return None
+    return frozenset(toolset_cls.fields) - frozenset(toolset_cls.get_excluded_fields())
+
+
 class _QueryExecutor:
     def __init__(self, query_tool_models, context=None, request=None):
         self.query_tool_models = query_tool_models
@@ -589,7 +602,8 @@ class _QueryExecutor:
         ret = list(apply_json_mango_query(qs, search_pipeline,
                                            text_search_fields=instance.get_text_search_fields(),
                                            allowed_models=instance.get_published_models(),
-                                           extended_operators=instance.extra_filters))
+                                           extended_operators=instance.extra_filters,
+                                           allowed_fields=_allowed_fields_for(mql_model)))
 
         if not ret:
             if instance.output_as_resource:

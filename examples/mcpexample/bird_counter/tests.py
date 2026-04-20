@@ -353,3 +353,45 @@ class JSONQueryTest(TestCase):
         self.assertEqual(3, row["min_count"])
         self.assertEqual(2, row["count"] )
         self.assertEqual(4, row["average"])
+
+
+class AllowedFieldsDefaultProjectionTest(TestCase):
+    """`allowed_fields` scopes the default (no-`$project`) projection to the
+    declared schema. Without it, `queryset.values()` returns every concrete
+    column on the model — which breaks the JSON renderer as soon as one of
+    those columns is non-serializable (e.g. GeoDjango PointField)."""
+
+    def setUp(self):
+        city = City.objects.create(name='New York', country='USA')
+        loc = Location.objects.create(name='Park', city=city)
+        Bird.objects.create(location=loc, species='Sparrow', count=5)
+        Bird.objects.create(location=loc, species='Robin', count=3)
+
+    def test_no_project_restricts_to_allowed_fields(self):
+        rows = list(query_tool.apply_json_mango_query(
+            Bird.objects.all().order_by("id"), [],
+            allowed_fields={"id", "species"},
+        ))
+        self.assertEqual(len(rows), 2)
+        for row in rows:
+            self.assertEqual(set(row.keys()), {"id", "species"})
+
+    def test_no_allowed_fields_returns_every_column(self):
+        """Backwards compatibility: when `allowed_fields` is absent, output
+        matches the pre-change behaviour (every concrete column)."""
+        rows = list(query_tool.apply_json_mango_query(Bird.objects.all().order_by("id"), []))
+        for row in rows:
+            self.assertIn("count", row)
+            self.assertIn("location_id", row)
+
+    def test_explicit_project_still_wins(self):
+        """`allowed_fields` only affects the default projection; explicit
+        `$project` continues to control output shape."""
+        rows = list(query_tool.apply_json_mango_query(
+            Bird.objects.all().order_by("id"),
+            [{"$project": {"species": 1}}],
+            allowed_fields={"id", "species"},
+        ))
+        self.assertEqual([r["species"] for r in rows], ["Sparrow", "Robin"])
+        for row in rows:
+            self.assertNotIn("id", row)
