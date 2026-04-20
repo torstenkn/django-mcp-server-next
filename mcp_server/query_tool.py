@@ -239,7 +239,10 @@ def apply_json_mango_query(queryset: QuerySet, pipeline: list[dict],
             if any("$group" in s for s in pipeline[i+1:]):
                 raise ValueError("$project cannot appear when pipeline contains $group :"
                                  " please review pipeline syntax constriants.")
-            projection_fields, projection_mapping = _interpret_projection(stage["$project"], lookup_alias_map)
+            projection_spec = stage["$project"]
+            if allowed_fields:
+                projection_spec = _strip_undeclared_from_projection(projection_spec, allowed_fields)
+            projection_fields, projection_mapping = _interpret_projection(projection_spec, lookup_alias_map)
 
         elif "$group" in stage:
             if i != len(pipeline) - 1:
@@ -327,6 +330,31 @@ def apply_json_mango_query(queryset: QuerySet, pipeline: list[dict],
         return _postprocess_projection(queryset.values(*sorted(allowed_fields)), None)
 
     return _postprocess_projection(queryset.values(), None)
+
+
+def _strip_undeclared_from_projection(projection, allowed_fields):
+    """Silently drop `$project` mappings whose source field isn't declared.
+
+    Covers both forms of projection leak:
+        {"street": 1}              → source is `street`
+        {"renamed": "$street"}     → source is `street` (renamed to `renamed`)
+    In both cases the mapping is removed, so `street` never reaches the
+    output. Alias-prefixed sources (`$loc.name`) are passed through — those
+    are already gated by `$lookup` + `allowed_models`. Exclusions like
+    `{"_id": 0}` are passed through so callers can still hide `_id`.
+    """
+    filtered = {}
+    for output_field, spec in projection.items():
+        if isinstance(spec, str) and spec.startswith("$"):
+            source = spec[1:]
+            if "." in source or source in allowed_fields or source in ("_id", "pk"):
+                filtered[output_field] = spec
+        elif spec:
+            if output_field in allowed_fields or output_field in ("_id", "pk"):
+                filtered[output_field] = spec
+        else:
+            filtered[output_field] = spec
+    return filtered
 
 
 def _interpret_projection(projection, lookup_map):

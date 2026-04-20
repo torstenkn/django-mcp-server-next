@@ -355,11 +355,22 @@ class JSONQueryTest(TestCase):
         self.assertEqual(4, row["average"])
 
 
-class AllowedFieldsDefaultProjectionTest(TestCase):
-    """`allowed_fields` scopes the default (no-`$project`) projection to the
-    declared schema. Without it, `queryset.values()` returns every concrete
-    column on the model — which breaks the JSON renderer as soon as one of
-    those columns is non-serializable (e.g. GeoDjango PointField)."""
+class UndeclaredFieldsNotReturnedTest(TestCase):
+    """Undeclared fields must never appear in query output.
+
+    `ModelQueryToolset.fields` is documented as controlling which fields are
+    published. Before this change it only affected the LLM-facing schema; the
+    default `queryset.values()` call at the end of the pipeline still returned
+    every concrete column on the model. That meant any column on any row a
+    caller could see — internal flags, audit metadata, raw geometry columns,
+    anything the toolset author deliberately left out of `fields` — was
+    reachable by simply omitting `$project`. It also made the endpoint crash
+    whenever a non-declared column was non-serializable (e.g. GeoDjango
+    PointField), since the column still reached the JSON renderer.
+
+    These tests pin the guarantee that `fields` is a real boundary: rows
+    returned from the pipeline never contain keys outside the declared set.
+    """
 
     def setUp(self):
         city = City.objects.create(name='New York', country='USA')
@@ -367,7 +378,9 @@ class AllowedFieldsDefaultProjectionTest(TestCase):
         Bird.objects.create(location=loc, species='Sparrow', count=5)
         Bird.objects.create(location=loc, species='Robin', count=3)
 
-    def test_no_project_restricts_to_allowed_fields(self):
+    def test_undeclared_fields_are_not_returned(self):
+        """The core guarantee: `count` and `location_id` exist on Bird but
+        aren't in the allowlist, so they must not leak into the output."""
         rows = list(query_tool.apply_json_mango_query(
             Bird.objects.all().order_by("id"), [],
             allowed_fields={"id", "species"},
@@ -375,18 +388,10 @@ class AllowedFieldsDefaultProjectionTest(TestCase):
         self.assertEqual(len(rows), 2)
         for row in rows:
             self.assertEqual(set(row.keys()), {"id", "species"})
+            self.assertNotIn("count", row)
+            self.assertNotIn("location_id", row)
 
-    def test_no_allowed_fields_returns_every_column(self):
-        """Backwards compatibility: when `allowed_fields` is absent, output
-        matches the pre-change behaviour (every concrete column)."""
-        rows = list(query_tool.apply_json_mango_query(Bird.objects.all().order_by("id"), []))
-        for row in rows:
-            self.assertIn("count", row)
-            self.assertIn("location_id", row)
-
-    def test_explicit_project_still_wins(self):
-        """`allowed_fields` only affects the default projection; explicit
-        `$project` continues to control output shape."""
+    def test_explicit_project_to_declared_field_works(self):
         rows = list(query_tool.apply_json_mango_query(
             Bird.objects.all().order_by("id"),
             [{"$project": {"species": 1}}],
@@ -395,3 +400,41 @@ class AllowedFieldsDefaultProjectionTest(TestCase):
         self.assertEqual([r["species"] for r in rows], ["Sparrow", "Robin"])
         for row in rows:
             self.assertNotIn("id", row)
+            self.assertNotIn("count", row)
+
+    def test_project_to_undeclared_field_is_silently_stripped(self):
+        """`$project: {count: 1}` selects an undeclared column directly. The
+        mapping is dropped before interpretation so `count` never reaches
+        the output — even though the row-level access would otherwise allow
+        reading it."""
+        rows = list(query_tool.apply_json_mango_query(
+            Bird.objects.all().order_by("id"),
+            [{"$project": {"species": 1, "count": 1}}],
+            allowed_fields={"id", "species"},
+        ))
+        for row in rows:
+            self.assertNotIn("count", row)
+            self.assertIn("species", row)
+
+    def test_project_renamed_from_undeclared_field_is_silently_stripped(self):
+        """Rename bypass: `{renamed: "$count"}` still references `count` as
+        the source. Stripping by source prevents the output key `renamed`
+        from appearing at all."""
+        rows = list(query_tool.apply_json_mango_query(
+            Bird.objects.all().order_by("id"),
+            [{"$project": {"species": 1, "renamed": "$count"}}],
+            allowed_fields={"id", "species"},
+        ))
+        for row in rows:
+            self.assertNotIn("renamed", row)
+            self.assertNotIn("count", row)
+            self.assertIn("species", row)
+
+    def test_no_allowed_fields_preserves_legacy_behaviour(self):
+        """When a toolset doesn't declare `fields`, the caller opted out of
+        the allowlist — output contains every concrete column, same as
+        previous versions. This is the escape hatch for existing callers."""
+        rows = list(query_tool.apply_json_mango_query(Bird.objects.all().order_by("id"), []))
+        for row in rows:
+            self.assertIn("count", row)
+            self.assertIn("location_id", row)
