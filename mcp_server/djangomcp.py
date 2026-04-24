@@ -163,10 +163,10 @@ MCP_SESSION_ID_HDR = "Mcp-Session-Id"
 # Stuff pulled to support embedded server ?
 class DjangoMCP(MCPServer):
 
-    def __init__(self, name=None, instructions=None, stateless=False):
+    def __init__(self, name=None, instructions=None, stateless=False, icons=None):
         # Prevent extra server settings as we do not use the embedded server
         # instructions must be keyword-only: in mcp 2.x the second positional is title
-        super().__init__(name or "django_mcp_server", instructions=instructions)
+        super().__init__(name or "django_mcp_server", instructions=instructions, icons=icons)
         self.stateless = stateless
         engine = import_module(settings.SESSION_ENGINE)
         self.SessionStore = engine.SessionStore
