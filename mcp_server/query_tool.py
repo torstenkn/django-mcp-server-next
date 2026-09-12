@@ -150,7 +150,7 @@ All other stages NOT SUPPORTED : $addFields, $set, $unset, $unwind ...
 
 def apply_json_mango_query(queryset: QuerySet, pipeline: list[dict],
                            allowed_models: list = None, extended_operators: list = None,
-                           text_search_fields: list | str = '*'):
+                           text_search_fields: list | str = '*', excluded_fields: set = None):
     """
     Apply a JSON-like query to a Django QuerySet using a subset of MangoDB aggregation pipeline syntax.
     see pipeline_dsl_spec() for details.
@@ -159,6 +159,7 @@ def apply_json_mango_query(queryset: QuerySet, pipeline: list[dict],
     :param allowed_models: List of allowed models for $lookup stages. If None, all models are allowed. Can be the string name or the Model class.
     :param extended_operators: List of Queryset API lookups to support as exetended operators. this interprets {"<field>":{"$<op>": value} as Q({field}__{op}=value)
     :param text_search_fields: List of field names to apply `$text` full-text search to. Use "*" to apply to all CharField and TextField fields of the model. Required if `$text` is used.
+    :param excluded_fields: Set of field names that may not be used in $match, even to filter on (they are not published in the schema either). If None, no field is excluded.
     :return: an iterable (eventually the queryset) of JSON results.
     """
 
@@ -167,6 +168,9 @@ def apply_json_mango_query(queryset: QuerySet, pipeline: list[dict],
 
     if allowed_models:
         allowed_models = [model.lower() if isinstance(model, str) else model._meta.model_name.lower()  for model in allowed_models]
+
+    if excluded_fields is None:
+        excluded_fields = set()
 
     model = queryset.model
     if text_search_fields == "*":
@@ -203,10 +207,12 @@ def apply_json_mango_query(queryset: QuerySet, pipeline: list[dict],
                 del match_stage["$text"]
                 q = _build_text_search_q(search_value, text_search_fields)
                 if match_stage:
-                    q &= _parse_match(match_stage, extended_operators, lookup_alias_map, text_search_fields)
+                    q &= _parse_match(match_stage, extended_operators, lookup_alias_map, text_search_fields,
+                                       model=model, allowed_models=allowed_models, excluded_fields=excluded_fields)
                 queryset = queryset.filter(q)
             else:
-                queryset = queryset.filter(_parse_match(stage["$match"], extended_operators, lookup_alias_map, text_search_fields=[]))
+                queryset = queryset.filter(_parse_match(stage["$match"], extended_operators, lookup_alias_map, text_search_fields=[],
+                                                          model=model, allowed_models=allowed_models, excluded_fields=excluded_fields))
 
         elif "$search" in stage:
             search = stage["$search"]
@@ -237,7 +243,9 @@ def apply_json_mango_query(queryset: QuerySet, pipeline: list[dict],
             if any("$group" in s for s in pipeline[i+1:]):
                 raise ValueError("$project cannot appear when pipeline contains $group :"
                                  " please review pipeline syntax constriants.")
-            projection_fields, projection_mapping = _interpret_projection(stage["$project"], lookup_alias_map)
+            projection_fields, projection_mapping = _interpret_projection(
+                stage["$project"], lookup_alias_map,
+                model=model, allowed_models=allowed_models, excluded_fields=excluded_fields)
 
         elif "$group" in stage:
             if i != len(pipeline) - 1:
@@ -321,10 +329,18 @@ def apply_json_mango_query(queryset: QuerySet, pipeline: list[dict],
         queryset = queryset.values(*projection_fields)
         return _postprocess_projection(queryset, projection_mapping)
 
+    if excluded_fields:
+        # No explicit $project: default to every concrete field on the
+        # model *except* the ones excluded from the schema, so exclude_fields
+        # actually keeps a field out of the response, not just out of the
+        # advertised schema.
+        default_fields = [f.name for f in model._meta.concrete_fields if f.name not in excluded_fields]
+        return _postprocess_projection(queryset.values(*default_fields), None)
+
     return _postprocess_projection(queryset.values(), None)
 
 
-def _interpret_projection(projection, lookup_map):
+def _interpret_projection(projection, lookup_map, model=None, allowed_models=None, excluded_fields=None):
     fields = []
     mapping = {}
     for output_field, spec in projection.items():
@@ -333,11 +349,15 @@ def _interpret_projection(projection, lookup_map):
             if path == "_id":
                 path = "pk"
             internal_field = _translate_field(path, lookup_map)
+            if model is not None:
+                _validate_field_path(model, internal_field, allowed_models, excluded_fields or set())
             fields.append(internal_field)
             mapping[output_field] = internal_field
         elif spec:
             path = output_field if output_field != "_id" else "pk"
             internal_field = _translate_field(path, lookup_map)
+            if model is not None:
+                _validate_field_path(model, internal_field, allowed_models, excluded_fields or set())
             fields.append(internal_field)
             mapping[output_field] = internal_field
     return fields, mapping
@@ -408,17 +428,59 @@ def _resolve_model_from_path(model, field_path, lookup_map):
     return current_model, parts[-1]
 
 
-def _parse_match(match, extended_operators, lookup_map, text_search_fields=None):
+def _validate_field_path(model, field_path, allowed_models, excluded_fields):
+    """
+    Walk a '__'-separated field path the same way $lookup paths are already
+    validated in _validate_lookup/_resolve_model_from_path, refusing to let a
+    $match filter traverse into a model that was not published, or filter on
+    a field that was excluded from the schema.
+
+    Without this, a $match key controls the left-hand side of a Q(**{...})
+    with no relationship to what get_published_models()/get_excluded_fields()
+    say is visible: allowed_models is otherwise only enforced for $lookup,
+    and excluded_fields is otherwise only used to build the schema shown to
+    the model, not to restrict what can actually be queried.
+    """
+    current_model = model
+    for part in field_path.split("__"):
+        if part in excluded_fields:
+            raise ValueError(f"Invalid field path '{field_path}': field '{part}' is not available.")
+        try:
+            field = current_model._meta.get_field(part)
+        except Exception:
+            # Not a model field at this hop: the rest of the path is a
+            # lookup/transform (e.g. '__startswith'), which Django itself
+            # will validate when the Q() is evaluated.
+            return
+        if field.is_relation:
+            related_model = field.related_model
+            if allowed_models is not None and related_model._meta.model_name.lower() not in allowed_models:
+                raise ValueError(
+                    f"Invalid field path '{field_path}': related model '{related_model.__name__}' is not published."
+                )
+            current_model = related_model
+
+
+def _parse_match(match, extended_operators, lookup_map, text_search_fields=None,
+                  model=None, allowed_models=None, excluded_fields=None):
     if "$and" in match:
-        return Q(*[_parse_match(cond, extended_operators, lookup_map) for cond in match["$and"]])
+        return Q(*[_parse_match(cond, extended_operators, lookup_map,
+                                 model=model, allowed_models=allowed_models, excluded_fields=excluded_fields)
+                    for cond in match["$and"]])
     if "$or" in match:
-        return Q(*[_parse_match(cond, extended_operators, lookup_map) for cond in match["$or"]], _connector=Q.OR)
+        return Q(*[_parse_match(cond, extended_operators, lookup_map,
+                                 model=model, allowed_models=allowed_models, excluded_fields=excluded_fields)
+                    for cond in match["$or"]], _connector=Q.OR)
     if "$nor" in match:
-        return ~Q(*[_parse_match(cond, extended_operators, lookup_map) for cond in match["$nor"]], _connector=Q.OR)
+        return ~Q(*[_parse_match(cond, extended_operators, lookup_map,
+                                  model=model, allowed_models=allowed_models, excluded_fields=excluded_fields)
+                     for cond in match["$nor"]], _connector=Q.OR)
 
     q = Q()
     for field, condition in match.items():
         field = _translate_field(field, lookup_map)
+        if model is not None:
+            _validate_field_path(model, field, allowed_models, excluded_fields or set())
 
         if isinstance(condition, dict):
             for op, value in condition.items():
@@ -589,7 +651,8 @@ class _QueryExecutor:
         ret = list(apply_json_mango_query(qs, search_pipeline,
                                            text_search_fields=instance.get_text_search_fields(),
                                            allowed_models=instance.get_published_models(),
-                                           extended_operators=instance.extra_filters))
+                                           extended_operators=instance.extra_filters,
+                                           excluded_fields=instance.get_excluded_fields()))
 
         if not ret:
             if instance.output_as_resource:
