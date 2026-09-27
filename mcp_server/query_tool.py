@@ -150,7 +150,8 @@ All other stages NOT SUPPORTED : $addFields, $set, $unset, $unwind ...
 
 def apply_json_mango_query(queryset: QuerySet, pipeline: list[dict],
                            allowed_models: list = None, extended_operators: list = None,
-                           text_search_fields: list | str = '*', excluded_fields: set = None):
+                           text_search_fields: list | str = '*', excluded_fields: set = None,
+                           query_tool_models: dict = None):
     """
     Apply a JSON-like query to a Django QuerySet using a subset of MangoDB aggregation pipeline syntax.
     see pipeline_dsl_spec() for details.
@@ -160,6 +161,11 @@ def apply_json_mango_query(queryset: QuerySet, pipeline: list[dict],
     :param extended_operators: List of Queryset API lookups to support as exetended operators. this interprets {"<field>":{"$<op>": value} as Q({field}__{op}=value)
     :param text_search_fields: List of field names to apply `$text` full-text search to. Use "*" to apply to all CharField and TextField fields of the model. Required if `$text` is used.
     :param excluded_fields: Set of field names that may not be used in $match, even to filter on (they are not published in the schema either). If None, no field is excluded.
+    :param query_tool_models: Mapping of published-model-name (lowercase) to its ModelQueryToolset class, used to
+        re-resolve `excluded_fields` for whichever related model a field path traverses into (each related model's
+        toolset can declare its own `exclude_fields`, independent of the root model's). If None, only the root
+        model's `excluded_fields` is enforced for the whole path -- exclude_fields declared on a related model's own
+        toolset will not be honoured once the path traverses into it.
     :return: an iterable (eventually the queryset) of JSON results.
     """
 
@@ -208,11 +214,13 @@ def apply_json_mango_query(queryset: QuerySet, pipeline: list[dict],
                 q = _build_text_search_q(search_value, text_search_fields)
                 if match_stage:
                     q &= _parse_match(match_stage, extended_operators, lookup_alias_map, text_search_fields,
-                                       model=model, allowed_models=allowed_models, excluded_fields=excluded_fields)
+                                       model=model, allowed_models=allowed_models, excluded_fields=excluded_fields,
+                                       query_tool_models=query_tool_models)
                 queryset = queryset.filter(q)
             else:
                 queryset = queryset.filter(_parse_match(stage["$match"], extended_operators, lookup_alias_map, text_search_fields=[],
-                                                          model=model, allowed_models=allowed_models, excluded_fields=excluded_fields))
+                                                          model=model, allowed_models=allowed_models, excluded_fields=excluded_fields,
+                                                          query_tool_models=query_tool_models))
 
         elif "$search" in stage:
             search = stage["$search"]
@@ -245,7 +253,8 @@ def apply_json_mango_query(queryset: QuerySet, pipeline: list[dict],
                                  " please review pipeline syntax constriants.")
             projection_fields, projection_mapping = _interpret_projection(
                 stage["$project"], lookup_alias_map,
-                model=model, allowed_models=allowed_models, excluded_fields=excluded_fields)
+                model=model, allowed_models=allowed_models, excluded_fields=excluded_fields,
+                query_tool_models=query_tool_models)
 
         elif "$group" in stage:
             if i != len(pipeline) - 1:
@@ -340,7 +349,8 @@ def apply_json_mango_query(queryset: QuerySet, pipeline: list[dict],
     return _postprocess_projection(queryset.values(), None)
 
 
-def _interpret_projection(projection, lookup_map, model=None, allowed_models=None, excluded_fields=None):
+def _interpret_projection(projection, lookup_map, model=None, allowed_models=None, excluded_fields=None,
+                           query_tool_models=None):
     fields = []
     mapping = {}
     for output_field, spec in projection.items():
@@ -350,14 +360,16 @@ def _interpret_projection(projection, lookup_map, model=None, allowed_models=Non
                 path = "pk"
             internal_field = _translate_field(path, lookup_map)
             if model is not None:
-                _validate_field_path(model, internal_field, allowed_models, excluded_fields or set())
+                _validate_field_path(model, internal_field, allowed_models, excluded_fields or set(),
+                                      query_tool_models=query_tool_models)
             fields.append(internal_field)
             mapping[output_field] = internal_field
         elif spec:
             path = output_field if output_field != "_id" else "pk"
             internal_field = _translate_field(path, lookup_map)
             if model is not None:
-                _validate_field_path(model, internal_field, allowed_models, excluded_fields or set())
+                _validate_field_path(model, internal_field, allowed_models, excluded_fields or set(),
+                                      query_tool_models=query_tool_models)
             fields.append(internal_field)
             mapping[output_field] = internal_field
     return fields, mapping
@@ -428,7 +440,7 @@ def _resolve_model_from_path(model, field_path, lookup_map):
     return current_model, parts[-1]
 
 
-def _validate_field_path(model, field_path, allowed_models, excluded_fields):
+def _validate_field_path(model, field_path, allowed_models, excluded_fields, query_tool_models=None):
     """
     Walk a '__'-separated field path the same way $lookup paths are already
     validated in _validate_lookup/_resolve_model_from_path, refusing to let a
@@ -440,47 +452,74 @@ def _validate_field_path(model, field_path, allowed_models, excluded_fields):
     say is visible: allowed_models is otherwise only enforced for $lookup,
     and excluded_fields is otherwise only used to build the schema shown to
     the model, not to restrict what can actually be queried.
+
+    `excluded_fields` is the ROOT model's own excluded-fields set. As the path
+    traverses into a related model, `query_tool_models` (a collection-name ->
+    ModelQueryToolset mapping, see QueryTool.query_tool_models) is used to
+    re-resolve excluded_fields for whichever model the path is currently in --
+    each related model can declare its own `exclude_fields` independently of
+    the root model's, and those must be honoured too, not just the root's.
     """
     current_model = model
+    current_excluded = excluded_fields
     for part in field_path.split("__"):
-        if part in excluded_fields:
+        if part in current_excluded:
             raise ValueError(f"Invalid field path '{field_path}': field '{part}' is not available.")
         try:
             field = current_model._meta.get_field(part)
         except Exception:
-            # Not a model field at this hop: the rest of the path is a
-            # lookup/transform (e.g. '__startswith'), which Django itself
-            # will validate when the Q() is evaluated.
-            return
+            # Not a model field at this hop: rather than let the remainder of
+            # the path through as an unvalidated Django lookup/transform
+            # (e.g. '__startswith', '__year'), which would let any lookup
+            # bypass the $-operator allowlist entirely on any published
+            # field, reject it outright. Lookups are only exposed through
+            # the pipeline's own $op syntax / `extended_operators`.
+            raise ValueError(f"Invalid field path '{field_path}': field '{part}' is not available.")
         if field.is_relation:
             related_model = field.related_model
-            if allowed_models is not None and related_model._meta.model_name.lower() not in allowed_models:
+            related_model_name = related_model._meta.model_name.lower()
+            if allowed_models is not None and related_model_name not in allowed_models:
                 raise ValueError(
                     f"Invalid field path '{field_path}': related model '{related_model.__name__}' is not published."
                 )
             current_model = related_model
+            if query_tool_models is not None:
+                related_toolset = query_tool_models.get(related_model_name)
+                if related_toolset is None:
+                    # allowed_models says this model is published, but we have
+                    # no toolset to ask which of its fields are excluded --
+                    # fail closed rather than silently querying it with no
+                    # exclusions applied.
+                    raise ValueError(
+                        f"Invalid field path '{field_path}': no query toolset registered for published model '{related_model.__name__}'."
+                    )
+                current_excluded = related_toolset.get_excluded_fields()
 
 
 def _parse_match(match, extended_operators, lookup_map, text_search_fields=None,
-                  model=None, allowed_models=None, excluded_fields=None):
+                  model=None, allowed_models=None, excluded_fields=None, query_tool_models=None):
     if "$and" in match:
         return Q(*[_parse_match(cond, extended_operators, lookup_map,
-                                 model=model, allowed_models=allowed_models, excluded_fields=excluded_fields)
+                                 model=model, allowed_models=allowed_models, excluded_fields=excluded_fields,
+                                 query_tool_models=query_tool_models)
                     for cond in match["$and"]])
     if "$or" in match:
         return Q(*[_parse_match(cond, extended_operators, lookup_map,
-                                 model=model, allowed_models=allowed_models, excluded_fields=excluded_fields)
+                                 model=model, allowed_models=allowed_models, excluded_fields=excluded_fields,
+                                 query_tool_models=query_tool_models)
                     for cond in match["$or"]], _connector=Q.OR)
     if "$nor" in match:
         return ~Q(*[_parse_match(cond, extended_operators, lookup_map,
-                                  model=model, allowed_models=allowed_models, excluded_fields=excluded_fields)
+                                  model=model, allowed_models=allowed_models, excluded_fields=excluded_fields,
+                                  query_tool_models=query_tool_models)
                      for cond in match["$nor"]], _connector=Q.OR)
 
     q = Q()
     for field, condition in match.items():
         field = _translate_field(field, lookup_map)
         if model is not None:
-            _validate_field_path(model, field, allowed_models, excluded_fields or set())
+            _validate_field_path(model, field, allowed_models, excluded_fields or set(),
+                                  query_tool_models=query_tool_models)
 
         if isinstance(condition, dict):
             for op, value in condition.items():
@@ -652,7 +691,8 @@ class _QueryExecutor:
                                            text_search_fields=instance.get_text_search_fields(),
                                            allowed_models=instance.get_published_models(),
                                            extended_operators=instance.extra_filters,
-                                           excluded_fields=instance.get_excluded_fields()))
+                                           excluded_fields=instance.get_excluded_fields(),
+                                           query_tool_models=self.query_tool_models))
 
         if not ret:
             if instance.output_as_resource:
