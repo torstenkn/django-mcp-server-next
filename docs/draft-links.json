@@ -1,0 +1,37 @@
+[
+  {
+    "upstream": 72,
+    "url": "https://github.com/torstenkn/django-mcp-server-next/pull/1",
+    "headRefName": "review/upstream-72"
+  },
+  {
+    "upstream": 66,
+    "url": "https://github.com/torstenkn/django-mcp-server-next/pull/2",
+    "headRefName": "review/upstream-66"
+  },
+  {
+    "upstream": 68,
+    "url": "https://github.com/torstenkn/django-mcp-server-next/pull/3",
+    "headRefName": "review/upstream-68"
+  },
+  {
+    "upstream": 67,
+    "url": "https://github.com/torstenkn/django-mcp-server-next/pull/4",
+    "headRefName": "review/upstream-67"
+  },
+  {
+    "upstream": 60,
+    "url": "https://github.com/torstenkn/django-mcp-server-next/pull/5",
+    "headRefName": "review/upstream-60"
+  },
+  {
+    "upstream": 63,
+    "url": "https://github.com/torstenkn/django-mcp-server-next/pull/6",
+    "headRefName": "review/upstream-63"
+  },
+  {
+    "upstream": 69,
+    "url": "https://github.com/torstenkn/django-mcp-server-next/pull/7",
+    "headRefName": "review/upstream-69"
+  }
+]

@@ -96,3 +96,17 @@ Closed promotional badge contribution adds no runtime or maintenance value; arch
 Successor tests exercise MCP initialize, tool listing/call, instructions, resources and prompts over in-memory transport. HTTP/ASGI/WSGI sessions, DRF authorization and full supported-version coverage remain release gates. CI matrix tests Python 3.10/3.12/3.13, Django 4.2/5.2 and MCP 2.0/latest 2.x. See GitHub Actions for actual matrix outcomes.
 
 Review order: reconcile #72 + #66 with regression tests; fix compatibility #68 + #67; validate #60 and #63 authorization; then documentation. Original #64 is superseded by successor metadata. Drafts preserve attribution but convey no approval.
+
+## Successor draft queue
+
+| Original | Successor draft | Branch |
+|---|---|---|
+| #72 | [https://github.com/torstenkn/django-mcp-server-next/pull/1](https://github.com/torstenkn/django-mcp-server-next/pull/1) | `review/upstream-72` |
+| #66 | [https://github.com/torstenkn/django-mcp-server-next/pull/2](https://github.com/torstenkn/django-mcp-server-next/pull/2) | `review/upstream-66` |
+| #68 | [https://github.com/torstenkn/django-mcp-server-next/pull/3](https://github.com/torstenkn/django-mcp-server-next/pull/3) | `review/upstream-68` |
+| #67 | [https://github.com/torstenkn/django-mcp-server-next/pull/4](https://github.com/torstenkn/django-mcp-server-next/pull/4) | `review/upstream-67` |
+| #60 | [https://github.com/torstenkn/django-mcp-server-next/pull/5](https://github.com/torstenkn/django-mcp-server-next/pull/5) | `review/upstream-60` |
+| #63 | [https://github.com/torstenkn/django-mcp-server-next/pull/6](https://github.com/torstenkn/django-mcp-server-next/pull/6) | `review/upstream-63` |
+| #69 | [https://github.com/torstenkn/django-mcp-server-next/pull/7](https://github.com/torstenkn/django-mcp-server-next/pull/7) | `review/upstream-69` |
+
+Final local validation: Python 3.12, Django 5.2.19 / MCP 2.3.0: 9 passed; Django 4.2.30 / MCP 2.0.0: 9 passed. Adapted #67: 11 passed with MCP 2.3.0. Wheel/sdist build and twine check passed, both contain original MIT license and provenance notice. No package uploaded.
