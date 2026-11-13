@@ -1,0 +1,55 @@
+From 06c3d60752fc16f66524a2cf57a1e429f3f3578a Mon Sep 17 00:00:00 2001
+From: John Spounias <john@d3cline.net>
+Date: Wed, 4 Jun 2025 04:04:56 -0700
+Subject: [PATCH 1/2] as discussed in the issue tracker
+
+---
+ mcp_server/djangomcp.py | 12 ++++++++----
+ 1 file changed, 8 insertions(+), 4 deletions(-)
+
+diff --git a/mcp_server/djangomcp.py b/mcp_server/djangomcp.py
+index 5f225de..b28986c 100644
+--- a/mcp_server/djangomcp.py
++++ b/mcp_server/djangomcp.py
+@@ -201,10 +201,14 @@ def handle_django_request(self, request):
+             else:
+                 return HttpResponse(status=400, content="Session required for stateful server")
+ 
+-        result = async_to_sync(_call_starlette_handler)(request, self.session_manager)
+-        request.session.save()
+-        result.headers[MCP_SESSION_ID_HDR]=request.session.session_key
+-        delattr(request, 'session')
++        result = anyio.run(_call_starlette_handler, request, self.session_manager)
++
++        # Only persist and strip the session in stateful mode when we actually
++        # added it to the request.
++        if not self.stateless and hasattr(request, "session"):
++            request.session.save()
++            result.headers[MCP_SESSION_ID_HDR] = request.session.session_key
++            delattr(request, "session")
+ 
+         return result
+ 
+
+From e835e3ea193a182ed86112363c61ee74f3e1d4ed Mon Sep 17 00:00:00 2001
+From: John Spounias <john@d3cline.net>
+Date: Thu, 5 Jun 2025 10:37:04 -0700
+Subject: [PATCH 2/2] should work, tested in staging
+
+---
+ mcp_server/djangomcp.py | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff --git a/mcp_server/djangomcp.py b/mcp_server/djangomcp.py
+index b28986c..f6ffb1e 100644
+--- a/mcp_server/djangomcp.py
++++ b/mcp_server/djangomcp.py
+@@ -201,7 +201,7 @@ def handle_django_request(self, request):
+             else:
+                 return HttpResponse(status=400, content="Session required for stateful server")
+ 
+-        result = anyio.run(_call_starlette_handler, request, self.session_manager)
++        result = async_to_sync(_call_starlette_handler)(request, self.session_manager)
+ 
+         # Only persist and strip the session in stateful mode when we actually
+         # added it to the request.

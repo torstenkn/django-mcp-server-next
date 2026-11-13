@@ -1,0 +1,252 @@
+From d9b6312e029416adb50e90621acce7d31a2ae8c7 Mon Sep 17 00:00:00 2001
+From: Torsten Kneuss <torsten@kneuss.de>
+Date: Mon, 3 Aug 2026 01:13:39 +0200
+Subject: [PATCH] Migrate DjangoMCP to mcp 2.x MCPServer APIs.
+
+Require mcp>=2 so fresh installs no longer resolve an incompatible SDK that removes FastMCP and breaks Django app loading.
+
+Co-authored-by: Cursor <cursoragent@cursor.com>
+---
+ README.md                                     |  7 +++----
+ mcp_server/djangomcp.py                       | 17 +++++++++--------
+ mcp_server/management/commands/mcp_inspect.py |  6 +++---
+ mcp_server/query_tool.py                      |  4 ++--
+ mcp_server/views.py                           |  4 ----
+ pyproject.toml                                |  4 ++--
+ test/test_mcp_client.py                       |  5 ++---
+ test/test_mcp_server.py                       | 15 +++++----------
+ 8 files changed, 26 insertions(+), 36 deletions(-)
+
+diff --git a/README.md b/README.md
+index cf40b17..c12755f 100644
+--- a/README.md
++++ b/README.md
+@@ -143,16 +143,15 @@ authorization through : DJANGO_MCP_AUTHENTICATION_CLASSES
+ You can test it with the python mcp SDK :
+ 
+ ```python
+-from mcp.client.streamable_http import streamablehttp_client
++from mcp.client.streamable_http import streamable_http_client
+ from mcp import ClientSession
+ 
+ 
+ async def main():
+     # Connect to a streamable HTTP server
+-    async with streamablehttp_client("http://localhost:8000/mcp") as (
++    async with streamable_http_client("http://localhost:8000/mcp") as (
+         read_stream,
+         write_stream,
+-        _,
+     ):
+         # Create a session using the client streams
+         async with ClientSession(read_stream, write_stream) as session:
+@@ -278,7 +277,7 @@ class MyTools(MCPToolset):
+ 
+ ### Use low level mcp server annotation
+ 
+-You can import the DjangoMCP server instance and use FastMCP annotations to declare
++You can import the DjangoMCP server instance and use MCPServer annotations to declare
+ mcp tools and resources :
+ 
+ ```python
+diff --git a/mcp_server/djangomcp.py b/mcp_server/djangomcp.py
+index 179f71a..1d46cdc 100644
+--- a/mcp_server/djangomcp.py
++++ b/mcp_server/djangomcp.py
+@@ -13,7 +13,7 @@
+ from django.core.serializers.json import DjangoJSONEncoder
+ from django.db.models import QuerySet
+ from django.http import HttpResponse, HttpRequest
+-from mcp.server import FastMCP
++from mcp.server import MCPServer
+ from mcp.server.streamable_http_manager import StreamableHTTPSessionManager
+ from rest_framework.mixins import CreateModelMixin, UpdateModelMixin, DestroyModelMixin, ListModelMixin
+ from rest_framework.serializers import Serializer
+@@ -161,11 +161,12 @@ def __call__(self, *args, **kwargs):
+ 
+ # FIXME: shall I reimplement the necessary without the
+ # Stuff pulled to support embedded server ?
+-class DjangoMCP(FastMCP):
++class DjangoMCP(MCPServer):
+ 
+     def __init__(self, name=None, instructions=None, stateless=False):
+         # Prevent extra server settings as we do not use the embedded server
+-        super().__init__(name or "django_mcp_server", instructions)
++        # instructions must be keyword-only: in mcp 2.x the second positional is title
++        super().__init__(name or "django_mcp_server", instructions=instructions)
+         self.stateless = stateless
+         engine = import_module(settings.SESSION_ENGINE)
+         self.SessionStore = engine.SessionStore
+@@ -173,7 +174,7 @@ def __init__(self, name=None, instructions=None, stateless=False):
+         # Optionally publish a tool that returns the global server instructions
+         if getattr(settings, "DJANGO_MCP_GET_SERVER_INSTRUCTIONS_TOOL", True):
+             async def _get_server_instructions():
+-                return self._mcp_server.instructions or ""
++                return self._lowlevel_server.instructions or ""
+ 
+             self._tool_manager.add_tool(
+                 fn=_get_server_instructions,
+@@ -184,8 +185,8 @@ async def _get_server_instructions():
+     @property
+     def session_manager(self) -> StreamableHTTPSessionManager:
+         return StreamableHTTPSessionManager(
+-            app=self._mcp_server,
+-            event_store=self._event_store,
++            app=self._lowlevel_server,
++            event_store=None,
+             json_response=True,
+             stateless=True,  # Sessions will be managed as Django sessions.
+         )
+@@ -231,12 +232,12 @@ def append_instructions(self, new_instructions):
+         Append instructions to the server instructions.
+         This method is called by the Django view when a request is received.
+         """
+-        inst = self._mcp_server.instructions
++        inst = self._lowlevel_server.instructions
+         if not inst:
+             inst = new_instructions
+         else:
+             inst = inst.strip() + "\n\n" + new_instructions.strip()
+-        self._mcp_server.instructions = inst
++        self._lowlevel_server.instructions = inst
+ 
+     def register_mcptoolset(self, toolset):
+         return toolset._add_tools_to(self._tool_manager)
+diff --git a/mcp_server/management/commands/mcp_inspect.py b/mcp_server/management/commands/mcp_inspect.py
+index 562fc94..1f9a825 100644
+--- a/mcp_server/management/commands/mcp_inspect.py
++++ b/mcp_server/management/commands/mcp_inspect.py
+@@ -17,10 +17,10 @@ async def _check_client():
+     svr_wr, cl_rd = anyio.create_memory_object_stream(0)
+ 
+     async def run_server():
+-        await mcp_server._mcp_server.run(
++        await mcp_server._lowlevel_server.run(
+             svr_rd,
+             svr_wr,
+-            mcp_server._mcp_server.create_initialization_options(),
++            mcp_server._lowlevel_server.create_initialization_options(),
+         )
+ 
+     async def run_client():
+@@ -31,7 +31,7 @@ async def run_client():
+             tool_list = await session.list_tools()
+             for tool in tool_list.tools:
+                 print(f'\n\t{tool.name}: {tool.description}')
+-                print(f'\tParameters: {tool.inputSchema}')
++                print(f'\tParameters: {tool.input_schema}')
+ 
+             print("Resources discovered in server:")
+             resource_list = await session.list_resources()
+diff --git a/mcp_server/query_tool.py b/mcp_server/query_tool.py
+index ba3717f..1fbd731 100644
+--- a/mcp_server/query_tool.py
++++ b/mcp_server/query_tool.py
+@@ -613,7 +613,7 @@ def query(self, collection : str, search_pipeline: list[dict] = []):
+                     type="resource",
+                     resource=TextResourceContents(
+                         uri=f"resource://query_result/{renderer.format}",
+-                        mimeType=renderer.media_type,
++                        mime_type=renderer.media_type,
+                         text=ret
+                     )
+                 )]
+@@ -622,7 +622,7 @@ def query(self, collection : str, search_pipeline: list[dict] = []):
+                     type="resource",
+                     resource=BlobResourceContents(
+                         uri=f"resource://query_result/{renderer.format}",
+-                        mimeType=renderer.media_type,
++                        mime_type=renderer.media_type,
+                         blob=base64.b64encode(ret).decode('utf-8')
+                     )
+                 )]
+diff --git a/mcp_server/views.py b/mcp_server/views.py
+index 9592e63..1b7d986 100644
+--- a/mcp_server/views.py
++++ b/mcp_server/views.py
+@@ -1,10 +1,6 @@
+-from django.conf import settings
+ from django.http import HttpResponse
+-from django.shortcuts import render
+ from django.utils.decorators import method_decorator
+-from django.views import View
+ from django.views.decorators.csrf import csrf_exempt
+-from mcp.server import FastMCP
+ from rest_framework.views import APIView
+ 
+ from mcp_server.djangomcp import global_mcp_server
+diff --git a/pyproject.toml b/pyproject.toml
+index 915d6a6..13aa901 100644
+--- a/pyproject.toml
++++ b/pyproject.toml
+@@ -1,6 +1,6 @@
+ [project]
+ name = "django-mcp-server"
+-version = "0.5.6"
++version = "0.6.0"
+ description = "Django MCP Server is a Django extensions to easily enable AI Agents to interact with Django Apps through the Model Context Protocol it works equally well on WSGI and ASGI"
+ authors = [
+     {name = "Omar BENHAMID",email = "omar.benhamid@smart-gts.com"}
+@@ -13,7 +13,7 @@ documentation = "https://github.com/omarbenhamid/django-mcp-server"
+ keywords = ["django", "mcp", "model context protocol", "tools"]
+ requires-python = ">=3.10"
+ dependencies = [
+-    "mcp (>=1.8.0)",
++    "mcp (>=2.0.0,<3)",
+     "django (>=4.0)",
+     "djangorestframework (>=3.15.0)",
+     "inflection (>=0.5.1,<0.6.0)",
+diff --git a/test/test_mcp_client.py b/test/test_mcp_client.py
+index ff0856c..8edc205 100644
+--- a/test/test_mcp_client.py
++++ b/test/test_mcp_client.py
+@@ -1,13 +1,12 @@
+-from mcp.client.streamable_http import streamablehttp_client
++from mcp.client.streamable_http import streamable_http_client
+ from mcp import ClientSession
+ 
+ 
+ async def main():
+     # Connect to a streamable HTTP server
+-    async with streamablehttp_client("http://localhost:8000/mcpunsecured") as (
++    async with streamable_http_client("http://localhost:8000/mcpunsecured") as (
+         read_stream,
+         write_stream,
+-        _,
+     ):
+         # Create a session using the client streams
+         async with ClientSession(read_stream, write_stream) as session:
+diff --git a/test/test_mcp_server.py b/test/test_mcp_server.py
+index fcb9791..bb77ed3 100644
+--- a/test/test_mcp_server.py
++++ b/test/test_mcp_server.py
+@@ -1,13 +1,10 @@
+ from typing import Any
+ import httpx
+-from mcp.server import Server
+-from mcp.server.fastmcp import FastMCP
++from mcp.server import MCPServer
+ 
+ 
+-# Initialize FastMCP server
+-mcp = FastMCP("weather")
+-
+-Server
++# Initialize MCPServer
++mcp = MCPServer("weather")
+ 
+ # Constants
+ NWS_API_BASE = "https://api.weather.gov"
+@@ -96,8 +93,6 @@ async def get_forecast(latitude: float, longitude: float) -> str:
+ 
+ if __name__ == "__main__":
+     # Initialize and run the server
+-    #mcp.run(transport='sse')
++    # mcp.run(transport='sse')
+     # mcp.run(transport='stdio')
+-    mcp.settings.port = 8002
+-    mcp.settings.json_response = True
+-    mcp.run(transport='streamable-http')
+\ No newline at end of file
++    mcp.run(transport='streamable-http', port=8002, json_response=True)
+\ No newline at end of file

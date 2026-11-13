@@ -1,0 +1,49 @@
+{
+  "72": {
+    "clean_merge": true,
+    "merge_tree_output": "40d7941b22dab18730f63ef0512b17727f39af51\n",
+    "tests": "........                                                                 [100%]\n8 passed in 0.08s\n",
+    "test_exit": 0
+  },
+  "66": {
+    "clean_merge": true,
+    "merge_tree_output": "b9db87055335caabeb1063e257522c52ba566f62\n",
+    "tests": ".............                                                            [100%]\n13 passed in 0.09s\n",
+    "test_exit": 0
+  },
+  "68": {
+    "clean_merge": true,
+    "merge_tree_output": "8804ca1c07a72b87cfdd59e9334d73a7ebc8a671\n",
+    "tests": "........                                                                 [100%]\n8 passed in 0.08s\n",
+    "test_exit": 0
+  },
+  "67": {
+    "clean_merge": false,
+    "merge_tree_output": "0db8d02373dfb646c06b2b13844a90d56359eed7\n100644 179f71a584372a776e239dde2e88a79ac1bbda8b 1\tmcp_server/djangomcp.py\n100644 1d46cdcea7dc77cbe6e698184efd378291c90ba7 2\tmcp_server/djangomcp.py\n100644 7e67e65307d5e766898fdc2d84551d31aa92b444 3\tmcp_server/djangomcp.py\n100644 915d6a6262f3ae0d6181914792cbfb95b7f98303 1\tpyproject.toml\n100644 13aa901e7251efa2d451028b7e127c6dccc1c12e 2\tpyproject.toml\n100644 c5a33d97b04b63b57c1aecceec31c70c83f6d767 3\tpyproject.toml\n\nAuto-merging README.md\nAuto-merging mcp_server/djangomcp.py\nCONFLICT (content): Merge conflict in mcp_server/djangomcp.py\nAuto-merging pyproject.toml\nCONFLICT (content): Merge conflict in pyproject.toml\n",
+    "tests": "not run: textual conflicts"
+  },
+  "63": {
+    "clean_merge": true,
+    "merge_tree_output": "e846dbd11c9b346accea36093a8f30bc73dd0cee\n",
+    "tests": "........                                                                 [100%]\n8 passed in 0.09s\n",
+    "test_exit": 0
+  },
+  "60": {
+    "clean_merge": true,
+    "merge_tree_output": "8d94ab23f726971ff58bd650c64ebcd1d6aa5ef9\n",
+    "tests": "........                                                                 [100%]\n8 passed in 0.09s\n",
+    "test_exit": 0
+  },
+  "69": {
+    "clean_merge": true,
+    "merge_tree_output": "085279a66a4e839df40123fa723174f29dcdeabb\n",
+    "tests": "........                                                                 [100%]\n8 passed in 0.08s\n",
+    "test_exit": 0
+  },
+  "64": {
+    "clean_merge": true,
+    "merge_tree_output": "d6b9e822da64a06473ac2bec9d2487ed8233d7b1\n",
+    "tests": "........                                                                 [100%]\n8 passed in 0.13s\n",
+    "test_exit": 0
+  }
+}

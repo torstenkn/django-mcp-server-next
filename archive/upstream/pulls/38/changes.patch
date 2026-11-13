@@ -1,0 +1,21 @@
+From 1fbe3031ac8c9e53ccc26612c9177e6dbddc6471 Mon Sep 17 00:00:00 2001
+From: Zachary Podbela <skierzp@me.com>
+Date: Thu, 7 Aug 2025 18:43:14 -0400
+Subject: [PATCH] Add Claude local memory files to .gitignore
+
+---
+ .gitignore | 3 +++
+ 1 file changed, 3 insertions(+)
+
+diff --git a/.gitignore b/.gitignore
+index 843a75b..05446df 100644
+--- a/.gitignore
++++ b/.gitignore
+@@ -178,3 +178,6 @@ contrib
+ .idea
+ 
+ .env
++
++# Claude local settings
++Claude.local.md
+\ No newline at end of file

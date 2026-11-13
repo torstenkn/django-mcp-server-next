@@ -1,0 +1,174 @@
+[
+  {
+    "data": {
+      "repository": {
+        "pullRequest": {
+          "reviewThreads": {
+            "nodes": [
+              {
+                "id": "PRRT_kwDOOns7hc6hxkkv",
+                "isResolved": false,
+                "isOutdated": false,
+                "path": "mcp_server/query_tool.py",
+                "line": 468,
+                "startLine": 468,
+                "diffSide": "RIGHT",
+                "comments": {
+                  "nodes": [
+                    {
+                      "id": "PRRC_kwDOOns7hc7uOlZF",
+                      "databaseId": 3996800581,
+                      "author": {
+                        "login": "omarbenhamid"
+                      },
+                      "body": "We need not to support Django QuerySet field lookups like `__startswith` and so. We just fail with a value error saying this is an unknown field: the MCP client shall use a $match stage to filter the query.\n",
+                      "createdAt": "2026-09-12T16:15:37Z",
+                      "updatedAt": "2026-09-12T16:40:04Z",
+                      "url": "https://github.com/gts360/django-mcp-server/pull/72#discussion_r3996800581"
+                    },
+                    {
+                      "id": "PRRC_kwDOOns7hc71T0G4",
+                      "databaseId": 4115612088,
+                      "author": {
+                        "login": "kemrec"
+                      },
+                      "body": "Fixed \u2014 an unresolved path segment now raises a ValueError instead of falling through, so a lookup/transform embedded in the bare key (e.g. `__startswith`) is rejected regardless of which field it's attached to, not just when it lands on an unpublished/excluded one.",
+                      "createdAt": "2026-09-27T13:59:34Z",
+                      "updatedAt": "2026-09-27T13:59:34Z",
+                      "url": "https://github.com/gts360/django-mcp-server/pull/72#discussion_r4115612088"
+                    }
+                  ],
+                  "pageInfo": {
+                    "hasNextPage": false,
+                    "endCursor": "Y3Vyc29yOnYyOpK0MjAyNi0wOS0yN1QxMzo1OTozNFrO9U9BuA=="
+                  }
+                }
+              },
+              {
+                "id": "PRRT_kwDOOns7hc6hxtFj",
+                "isResolved": false,
+                "isOutdated": true,
+                "path": "mcp_server/query_tool.py",
+                "line": null,
+                "startLine": null,
+                "diffSide": "RIGHT",
+                "comments": {
+                  "nodes": [
+                    {
+                      "id": "PRRC_kwDOOns7hc7uOx4_",
+                      "databaseId": 3996851775,
+                      "author": {
+                        "login": "omarbenhamid"
+                      },
+                      "body": "Here we pass-in the excluded fields for the specific \"root\" model we are querying. The issue is that when you navigate related objects you will need the to resolve excluded fields of related models.\n\nSo here we should pass the hole `self.query_tool_models` which maps a model name to its `ModelQueryToolset` class that has get_excluded_fields() method.\n\n\n",
+                      "createdAt": "2026-09-12T16:31:51Z",
+                      "updatedAt": "2026-09-12T16:40:04Z",
+                      "url": "https://github.com/gts360/django-mcp-server/pull/72#discussion_r3996851775"
+                    },
+                    {
+                      "id": "PRRC_kwDOOns7hc71T0IY",
+                      "databaseId": 4115612184,
+                      "author": {
+                        "login": "kemrec"
+                      },
+                      "body": "Done \u2014 the query now passes `query_tool_models` through to `apply_json_mango_query`, which threads it down to `_validate_field_path`.",
+                      "createdAt": "2026-09-27T13:59:35Z",
+                      "updatedAt": "2026-09-27T13:59:35Z",
+                      "url": "https://github.com/gts360/django-mcp-server/pull/72#discussion_r4115612184"
+                    }
+                  ],
+                  "pageInfo": {
+                    "hasNextPage": false,
+                    "endCursor": "Y3Vyc29yOnYyOpK0MjAyNi0wOS0yN1QxMzo1OTozNVrO9U9CGA=="
+                  }
+                }
+              },
+              {
+                "id": "PRRT_kwDOOns7hc6hxuKq",
+                "isResolved": false,
+                "isOutdated": false,
+                "path": "mcp_server/query_tool.py",
+                "line": 463,
+                "startLine": 463,
+                "diffSide": "RIGHT",
+                "comments": {
+                  "nodes": [
+                    {
+                      "id": "PRRC_kwDOOns7hc7uOzdv",
+                      "databaseId": 3996858223,
+                      "author": {
+                        "login": "omarbenhamid"
+                      },
+                      "body": "If line 655 comment is applied we should then initialize also `excluded_fields` with sth like : \n```python\nexcluded_fields = query_tool_models[current_model._meta.model_name.lower()].get_exculded_fields()\n```",
+                      "createdAt": "2026-09-12T16:34:32Z",
+                      "updatedAt": "2026-09-12T16:40:04Z",
+                      "url": "https://github.com/gts360/django-mcp-server/pull/72#discussion_r3996858223"
+                    },
+                    {
+                      "id": "PRRC_kwDOOns7hc71T0JF",
+                      "databaseId": 4115612229,
+                      "author": {
+                        "login": "kemrec"
+                      },
+                      "body": "Done \u2014 `_validate_field_path` re-resolves `excluded_fields` for whichever model the path is currently in via `query_tool_models`, starting from the root model's own set and updating it on every relation hop. If a related model passes the `allowed_models` check but isn't found in `query_tool_models`, it now fails closed with a ValueError rather than silently applying no exclusions.",
+                      "createdAt": "2026-09-27T13:59:37Z",
+                      "updatedAt": "2026-09-27T13:59:37Z",
+                      "url": "https://github.com/gts360/django-mcp-server/pull/72#discussion_r4115612229"
+                    }
+                  ],
+                  "pageInfo": {
+                    "hasNextPage": false,
+                    "endCursor": "Y3Vyc29yOnYyOpK0MjAyNi0wOS0yN1QxMzo1OTozN1rO9U9CRQ=="
+                  }
+                }
+              },
+              {
+                "id": "PRRT_kwDOOns7hc6hxudQ",
+                "isResolved": false,
+                "isOutdated": false,
+                "path": "mcp_server/query_tool.py",
+                "line": 485,
+                "startLine": 485,
+                "diffSide": "RIGHT",
+                "comments": {
+                  "nodes": [
+                    {
+                      "id": "PRRC_kwDOOns7hc7uOz6V",
+                      "databaseId": 3996860053,
+                      "author": {
+                        "login": "omarbenhamid"
+                      },
+                      "body": "Same as 444 here, to fix `excluded_fields`",
+                      "createdAt": "2026-09-12T16:35:18Z",
+                      "updatedAt": "2026-09-12T16:40:04Z",
+                      "url": "https://github.com/gts360/django-mcp-server/pull/72#discussion_r3996860053"
+                    },
+                    {
+                      "id": "PRRC_kwDOOns7hc71T0Jx",
+                      "databaseId": 4115612273,
+                      "author": {
+                        "login": "kemrec"
+                      },
+                      "body": "Done \u2014 same fix as above, re-resolved right after moving `current_model` to the related model.",
+                      "createdAt": "2026-09-27T13:59:38Z",
+                      "updatedAt": "2026-09-27T13:59:38Z",
+                      "url": "https://github.com/gts360/django-mcp-server/pull/72#discussion_r4115612273"
+                    }
+                  ],
+                  "pageInfo": {
+                    "hasNextPage": false,
+                    "endCursor": "Y3Vyc29yOnYyOpK0MjAyNi0wOS0yN1QxMzo1OTozOFrO9U9CcQ=="
+                  }
+                }
+              }
+            ],
+            "pageInfo": {
+              "hasNextPage": false,
+              "endCursor": "Y3Vyc29yOnYyOpK0MjAyNi0wOS0xMlQxNjozNToxOFrOocbnUA=="
+            }
+          }
+        }
+      }
+    }
+  }
+]

@@ -1,0 +1,37 @@
+From 3c5f5b89e56d475c5fb9237a15c4e350c49eecff Mon Sep 17 00:00:00 2001
+From: Ryan Malloy <rpm@malloys.us>
+Date: Sun, 8 Jun 2025 17:32:49 -0600
+Subject: [PATCH] Update README.md with Remote MCP options for claude desktop
+
+---
+ README.md | 17 +++++++++++++++++
+ 1 file changed, 17 insertions(+)
+
+diff --git a/README.md b/README.md
+index 8b9ecff..df5fc53 100644
+--- a/README.md
++++ b/README.md
+@@ -188,6 +188,23 @@ For this you need :
+ **NOTE** `/path/to/interpreter/` should point to a python interpreter you use (can be in your venv for example)
+ and `/path/to/your/project/` is the path to your django project.
+ 
++#### Use proxy for Remote MCP Support
++[Cloudflare Docs](https://developers.cloudflare.com/agents/guides/test-remote-mcp-server/#connect-your-remote-mcp-server-to-claude-desktop-via-a-local-proxy)
++Even though Claude Desktop ↗ doesn't yet support remote MCP clients, you can use the mcp-remote local proxy ↗ to connect it to your remote MCP server. This lets you to test what an interaction with your remote MCP server will be like with a real-world MCP client.
++
++```json
++{
++  "mcpServers": {
++    "test_django_mcp": {
++      "command": "npx",
++      "args": ["mcp-remote", "http://MYSITE.com/mcp"]
++    }
++  }
++}
++```
++#### Pro, Max, Team and Enterprise Plans
++[Claude support for Remote MCP](https://support.anthropic.com/en/articles/11175166-about-custom-integrations-using-remote-mcp)
++Custom integrations using remote MCP are available on Claude.ai and Claude Desktop for users on Claude Pro, Max, Team, and Enterprise plans. This feature is currently in beta.
+ 
+ 
+ ## Advanced topics

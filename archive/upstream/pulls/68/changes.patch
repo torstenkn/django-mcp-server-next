@@ -1,0 +1,37 @@
+From d80982d4324d369e6764087c75e7359a2d0ce647 Mon Sep 17 00:00:00 2001
+From: gghez <6266247+gghez@users.noreply.github.com>
+Date: Fri, 24 Apr 2026 23:10:08 +0200
+Subject: [PATCH] fix: use Count("pk") to support models with custom primary
+ key
+
+Count("id") fails with FieldError on models that define a custom
+primary key (e.g. UUIDField(primary_key=True)). The "pk" alias
+always resolves to the actual primary key field regardless of its name.
+
+Closes #65
+---
+ mcp_server/query_tool.py | 4 ++--
+ 1 file changed, 2 insertions(+), 2 deletions(-)
+
+diff --git a/mcp_server/query_tool.py b/mcp_server/query_tool.py
+index ba3717f..89b1b0e 100644
+--- a/mcp_server/query_tool.py
++++ b/mcp_server/query_tool.py
+@@ -256,7 +256,7 @@ def apply_json_mango_query(queryset: QuerySet, pipeline: list[dict],
+                 op, arg = next(iter(agg.items()))
+                 if op == "$sum":
+                     if arg == 1:
+-                        annotations[key] = Count("id")
++                        annotations[key] = Count("pk")
+                     elif isinstance(arg, str) and arg.startswith("$"):
+                         annotations[key] = Sum(_translate_field(arg[1:], lookup_alias_map))
+                     else:
+@@ -279,7 +279,7 @@ def apply_json_mango_query(queryset: QuerySet, pipeline: list[dict],
+ 
+                 elif op == "$count":
+                     if arg == 1:
+-                        annotations[key] = Count("id")
++                        annotations[key] = Count("pk")
+                     elif isinstance(arg, str) and arg.startswith("$"):
+                         annotations[key] = Count(_translate_field(arg[1:], lookup_alias_map))
+                     else:

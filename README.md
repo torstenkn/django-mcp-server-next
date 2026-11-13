@@ -1,10 +1,10 @@
-# Django MCP Server
+# Django MCP Server Next
 
-[![PyPI version](https://img.shields.io/pypi/v/django-mcp-server)](https://pypi.org/project/django-mcp-server/)
-![License](https://img.shields.io/pypi/l/django-mcp-server)
-[![Published on Django Packages](https://img.shields.io/badge/Published%20on-Django%20Packages-0c3c26)](https://djangopackages.org/packages/p/django-mcp-server/)
-![Python versions](https://img.shields.io/pypi/pyversions/django-mcp-server)
-[![Django versions](https://img.shields.io/pypi/frameworkversions/django/django-mcp-server)](https://pypi.org/project/django-mcp-server/)
+Independent successor to [gts360/django-mcp-server](https://github.com/gts360/django-mcp-server), originally authored by Omar BENHAMID / Smart GTS. Maintained by Torsten Kneuss. MIT license and original authorship are preserved. This project is not affiliated with or endorsed by upstream.
+
+**Development alpha — no PyPI release has been published by this migration.** The baseline preserves [Torsten’s upstream PR #70](https://github.com/gts360/django-mcp-server/pull/70) for MCP 2.x. Security review is pending; do not expose model-query tools to untrusted clients until the field-access issues in [the review queue](docs/PR_REVIEW.md) are resolved.
+
+See [provenance](NOTICE.md), [PR archive](archive/upstream/README.md), [review queue](docs/PR_REVIEW.md), and [release preparation](docs/RELEASING.md).
 
 **Django MCP Server** is an implementation of the **Model Context Protocol (MCP)** extension for Django. This module allows **MCP Clients** and **AI agents** to interact with **any Django application** seamlessly.
 
@@ -17,7 +17,7 @@
 
 Many thanks 🙏 to [all the contributor community](https://github.com/omarbenhamid/django-mcp-server/graphs/contributors)
 
-Maintained ✨ with care by [Smart GTS software engineering](https://www.smart-gts.com/#contact).
+Original project created by [Smart GTS software engineering](https://www.smart-gts.com/#contact).
 
 Licensed under the **MIT License**.
 
@@ -36,13 +36,13 @@ Licensed under the **MIT License**.
 ### 1️⃣ Install
 
 ```bash
-pip install django-mcp-server
+pip install git+https://github.com/torstenkn/django-mcp-server-next.git@next
 ```
 
 Or directly from GitHub:
 
 ```bash
-pip install git+https://github.com/omarbenhamid/django-mcp-server.git
+pip install git+https://github.com/torstenkn/django-mcp-server-next.git@next
 ```
 
 ---
@@ -485,7 +485,7 @@ Refer to this [list of clients](https://modelcontextprotocol.io/clients)
 
 ## Issues
 
-If you encounter bugs or have feature requests, please open an issue on [GitHub Issues](https://github.com/omarbenhamid/django-mcp-server/issues).
+If you encounter bugs or have feature requests, please open an issue on [GitHub Issues](https://github.com/torstenkn/django-mcp-server-next/issues).
 
 ---
 

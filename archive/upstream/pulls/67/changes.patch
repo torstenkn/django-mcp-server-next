@@ -1,0 +1,123 @@
+From 497c1766c2cf69e6203d11d7929e172ae73ea88d Mon Sep 17 00:00:00 2001
+From: gghez <6266247+gghez@users.noreply.github.com>
+Date: Fri, 24 Apr 2026 22:53:26 +0200
+Subject: [PATCH] feat: forward icons parameter to FastMCP (closes #58)
+
+DjangoMCP.__init__ now accepts an optional `icons` list and forwards
+it to FastMCP.__init__, so MCP clients (e.g. Claude Desktop) can
+display a server icon. The option is also usable via
+DJANGO_MCP_GLOBAL_SERVER_CONFIG.
+
+The `icons` keyword was introduced in mcp 1.15.0, so the lower bound
+on the `mcp` dependency is bumped from 1.8.0 to 1.15.0.
+---
+ README.md                                 | 10 ++++++++--
+ examples/mcpexample/bird_counter/tests.py | 17 ++++++++++++++++-
+ mcp_server/djangomcp.py                   |  5 +++--
+ pyproject.toml                            |  2 +-
+ 4 files changed, 28 insertions(+), 6 deletions(-)
+
+diff --git a/README.md b/README.md
+index cf40b17..8f54174 100644
+--- a/README.md
++++ b/README.md
+@@ -317,10 +317,15 @@ async def increment_species(name: str, amount: int = 1) -> int:
+ In `settings.py` you can initialize the `DJANGO_MCP_GLOBAL_SERVER_CONFIG` parameter. These will be 
+ passed to the `MCPServer` server during initialization
+ ```python
++from mcp.types import Icon
++
+ DJANGO_MCP_GLOBAL_SERVER_CONFIG = {
+     "name":"mymcp",
+     "instructions": "Some instructions to use this server",
+-    "stateless": False
++    "stateless": False,
++    "icons": [
++        Icon(src="https://example.com/icon.png", mimeType="image/png", sizes=["64x64"]),
++    ],
+ }
+ ```
+ 
+@@ -467,7 +472,8 @@ Refer to this [list of clients](https://modelcontextprotocol.io/clients)
+ - **DJANGO_MCP_GLOBAL_SERVER_CONFIG** a configuration dictionnary for the global MCP server default to empty. It can include the following parmaters
+    - name: a  name for the server
+    - instructions: global instructions
+-   - stateless : when set to 'True' the server will not manage sessions 
++   - stateless : when set to 'True' the server will not manage sessions
++   - icons: optional list of `mcp.types.Icon` instances advertised to clients (e.g. shown by Claude Desktop next to the server name). Requires `mcp >= 1.15.0`.
+ 
+ - **DJANGO_MCP_AUTHENTICATION_CLASSES** (default to no authentication) a list of reference to Django Rest Framework authentication classes to enfors in the main MCP view.
+ - **DJANGO_MCP_GET_SERVER_INSTRUCTIONS_TOOL** (default=True) if true a tool will be offered to obtain global instruction and tools will instruct the agent to use it, as agents do not always have the MCP server global instructions included in their system prompt.
+diff --git a/examples/mcpexample/bird_counter/tests.py b/examples/mcpexample/bird_counter/tests.py
+index e9da897..08e246d 100644
+--- a/examples/mcpexample/bird_counter/tests.py
++++ b/examples/mcpexample/bird_counter/tests.py
+@@ -1,8 +1,10 @@
+ from django.db.models import Q
+ from django.test import TestCase
++from mcp.types import Icon
+ 
+ from .models import Bird, Location, City
+ from mcp_server import query_tool
++from mcp_server.djangomcp import DjangoMCP
+ 
+ 
+ class JSONQueryTest(TestCase):
+@@ -352,4 +354,17 @@ def test_group_multi_aggregations(self):
+         self.assertEqual(5, row["max_count"])
+         self.assertEqual(3, row["min_count"])
+         self.assertEqual(2, row["count"] )
+-        self.assertEqual(4, row["average"])
+\ No newline at end of file
++        self.assertEqual(4, row["average"])
++
++
++class DjangoMCPIconsTest(TestCase):
++    """Regression tests for the icons argument forwarded to FastMCP (issue #58)."""
++
++    def test_icons_default_is_none(self):
++        server = DjangoMCP(name="icons-default")
++        self.assertIsNone(server._mcp_server.icons)
++
++    def test_icons_forwarded_to_fastmcp(self):
++        icons = [Icon(src="https://example.com/icon.png", mimeType="image/png", sizes=["64x64"])]
++        server = DjangoMCP(name="icons-forwarded", icons=icons)
++        self.assertEqual(server._mcp_server.icons, icons)
+\ No newline at end of file
+diff --git a/mcp_server/djangomcp.py b/mcp_server/djangomcp.py
+index 179f71a..7e67e65 100644
+--- a/mcp_server/djangomcp.py
++++ b/mcp_server/djangomcp.py
+@@ -15,6 +15,7 @@
+ from django.http import HttpResponse, HttpRequest
+ from mcp.server import FastMCP
+ from mcp.server.streamable_http_manager import StreamableHTTPSessionManager
++from mcp.types import Icon
+ from rest_framework.mixins import CreateModelMixin, UpdateModelMixin, DestroyModelMixin, ListModelMixin
+ from rest_framework.serializers import Serializer
+ from rest_framework.test import APIRequestFactory
+@@ -163,9 +164,9 @@ def __call__(self, *args, **kwargs):
+ # Stuff pulled to support embedded server ?
+ class DjangoMCP(FastMCP):
+ 
+-    def __init__(self, name=None, instructions=None, stateless=False):
++    def __init__(self, name=None, instructions=None, stateless=False, icons: list[Icon] | None = None):
+         # Prevent extra server settings as we do not use the embedded server
+-        super().__init__(name or "django_mcp_server", instructions)
++        super().__init__(name or "django_mcp_server", instructions, icons=icons)
+         self.stateless = stateless
+         engine = import_module(settings.SESSION_ENGINE)
+         self.SessionStore = engine.SessionStore
+diff --git a/pyproject.toml b/pyproject.toml
+index 915d6a6..c5a33d9 100644
+--- a/pyproject.toml
++++ b/pyproject.toml
+@@ -13,7 +13,7 @@ documentation = "https://github.com/omarbenhamid/django-mcp-server"
+ keywords = ["django", "mcp", "model context protocol", "tools"]
+ requires-python = ">=3.10"
+ dependencies = [
+-    "mcp (>=1.8.0)",
++    "mcp (>=1.15.0)",
+     "django (>=4.0)",
+     "djangorestframework (>=3.15.0)",
+     "inflection (>=0.5.1,<0.6.0)",

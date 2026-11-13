@@ -1,0 +1,8 @@
+Isolated #70 + #66:
+allowed_fields set() output [{'id': 1, 'location_id': None, 'species': 'secret', 'count': 987}]
+allowed_fields {'species'} output [{'species': 'secret'}]
+
+Isolated #70 + #72:
+ValueError Invalid field path 'species': field 'species' is not available.
+[{'$group': {'_id': None, 'leaked': {'$max': '$species'}}}] [{'leaked': 'secret'}]
+[{'$search': {'text': {'query': 'secret'}}}] [{'id': 1, 'location': None, 'count': 987}]

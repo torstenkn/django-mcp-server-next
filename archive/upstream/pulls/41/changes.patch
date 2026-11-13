@@ -1,0 +1,147 @@
+From 7427fb01b440a0da5abb2daaaacb72959f751c26 Mon Sep 17 00:00:00 2001
+From: Omar BENHAMID <omar.benhamid@smart-gts.com>
+Date: Sun, 6 Jul 2025 20:54:17 +0200
+Subject: [PATCH 1/3] mcp_inspect: improved to work on all plateforms without
+ external process
+
+---
+ README.md                                     |  8 +++++
+ mcp_server/management/commands/mcp_inspect.py | 35 +++++++++++++------
+ 2 files changed, 33 insertions(+), 10 deletions(-)
+
+diff --git a/README.md b/README.md
+index 47a5350..e885580 100644
+--- a/README.md
++++ b/README.md
+@@ -124,6 +124,14 @@ class MyAITools(MCPToolset):
+ 
+ ---
+ 
++### Verify with MCP Inspect
++
++Use the management commande mcp_inspect to ensure your tools are correctly declared : 
++
++```bash
++python manage.py mcp_inspect
++```
++
+ ### Use the MCP with any MCP Client
+ 
+ The mcp tool is now published on your Django App at `/mcp` endpoint. 
+diff --git a/mcp_server/management/commands/mcp_inspect.py b/mcp_server/management/commands/mcp_inspect.py
+index b9a8472..31ce032 100644
+--- a/mcp_server/management/commands/mcp_inspect.py
++++ b/mcp_server/management/commands/mcp_inspect.py
+@@ -1,19 +1,30 @@
++import asyncio
++import os
++from io import TextIOWrapper
++
+ from django.core.management.base import BaseCommand
+ from asgiref.sync import async_to_sync
+-from mcp import ClientSession, StdioServerParameters
++import anyio
++from mcp import ClientSession, StdioServerParameters, stdio_server
+ from mcp.client.stdio import stdio_client
+ 
++from mcp_server import mcp_server
++
+ 
+ async def _check_client():
+-    server_params = StdioServerParameters(
+-        command="python",
+-        args=[
+-            "manage.py",
+-            "stdio_server"
+-        ]
+-    )
+-    async with stdio_client(server_params) as (read, write):
+-        async with ClientSession(read, write) as session:
++
++    cl_wr, svr_rd = anyio.create_memory_object_stream(0)
++    svr_wr, cl_rd = anyio.create_memory_object_stream(0)
++
++    async def run_server():
++        await mcp_server._mcp_server.run(
++            svr_rd,
++            svr_wr,
++            mcp_server._mcp_server.create_initialization_options(),
++        )
++
++    async def run_client():
++        async with ClientSession(cl_rd, cl_wr) as session:
+             await session.initialize()
+ 
+             print("Tools discovered in server:")
+@@ -31,6 +42,10 @@ async def _check_client():
+             for prompt in prompt_list.prompts:
+                 print(f'\t{prompt.name}: {prompt.description}')
+ 
++    async with anyio.create_task_group() as tg:
++        tg.start_soon(run_server)
++        tg.start_soon(run_client)
++
+ 
+ _check_client_sync = async_to_sync(_check_client)
+ 
+
+From dc959abf28a5ed7a4c80ef0b843d3647ae872289 Mon Sep 17 00:00:00 2001
+From: Omar BENHAMID <omar.benhamid@smart-gts.com>
+Date: Sun, 6 Jul 2025 20:56:17 +0200
+Subject: [PATCH 2/3] Releasing 0.5.6
+
+---
+ pyproject.toml | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff --git a/pyproject.toml b/pyproject.toml
+index fd513f2..915d6a6 100644
+--- a/pyproject.toml
++++ b/pyproject.toml
+@@ -1,6 +1,6 @@
+ [project]
+ name = "django-mcp-server"
+-version = "0.5.5"
++version = "0.5.6"
+ description = "Django MCP Server is a Django extensions to easily enable AI Agents to interact with Django Apps through the Model Context Protocol it works equally well on WSGI and ASGI"
+ authors = [
+     {name = "Omar BENHAMID",email = "omar.benhamid@smart-gts.com"}
+
+From d06d16c90e4e19ae60e3b23bbfc2215485adf7ff Mon Sep 17 00:00:00 2001
+From: Omar BENHAMID <omar.benhamid@smart-gts.com>
+Date: Sat, 9 Aug 2025 20:39:27 +0200
+Subject: [PATCH 3/3] Fixing #29
+
+---
+ examples/mcpexample/bird_counter/mcp.py | 1 -
+ mcp_server/query_tool.py                | 5 ++---
+ 2 files changed, 2 insertions(+), 4 deletions(-)
+
+diff --git a/examples/mcpexample/bird_counter/mcp.py b/examples/mcpexample/bird_counter/mcp.py
+index ac25e90..fe09e90 100644
+--- a/examples/mcpexample/bird_counter/mcp.py
++++ b/examples/mcpexample/bird_counter/mcp.py
+@@ -25,7 +25,6 @@
+ 
+ class BirdQuery(ModelQueryToolset):
+     model = Bird
+-
+     output_format = "csv"
+     # output_as_resource = True # as of today milage with this may vary, claude supports it if it is not tool long, ADK fails to process the response ...
+ 
+diff --git a/mcp_server/query_tool.py b/mcp_server/query_tool.py
+index 568d8d1..294e58d 100644
+--- a/mcp_server/query_tool.py
++++ b/mcp_server/query_tool.py
+@@ -527,9 +527,8 @@ def get_text_search_fields(cls):
+                                                     isinstance(f, (
+                                                     CharField, TextField)) and f.concrete and not f.is_relation)
+         else:
+-            model_fields = cls.model._meta.get_fields()
+-            cls._effective_text_search_fields = set(f for f in cls.fields if not model_fields[f].is_relation and
+-                                                    isinstance(model_fields[f], (CharField, TextField)))
++            cls._effective_text_search_fields = set(f.name for f in cls.model._meta.get_fields() if f.name in cls.fields and
++                                                    isinstance(f, (CharField, TextField)) and f.concrete and not f.is_relation)
+         if not cls._effective_text_search_fields:
+             logger.debug(f"Full text search disabled for {cls.model}: no search fields resolved")
+         else:

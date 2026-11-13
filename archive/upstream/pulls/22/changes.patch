@@ -1,0 +1,88 @@
+From cd2b1e353bea71e6a10d6001eb9046cafcfe4175 Mon Sep 17 00:00:00 2001
+From: Vladyslav Burzakovskyy <vladislav.burzakovskij@satoshilabs.com>
+Date: Wed, 18 Jun 2025 23:30:58 +0200
+Subject: [PATCH 1/2] update(README): Fix secondary endpoint import and tool
+ definition
+
+---
+ README.md | 7 +++++--
+ 1 file changed, 5 insertions(+), 2 deletions(-)
+
+diff --git a/README.md b/README.md
+index a2b52de..d2d3b27 100644
+--- a/README.md
++++ b/README.md
+@@ -382,10 +382,11 @@ work here..
+ ### Secondary MCP endpoint
+ in `mcp.py`
+ ```python
++from mcp_server.djangomcp import DjangoMCP
+ 
+ second_mcp = DjangoMCP(name="altserver")
+ 
+-@second_mcp.tools()
++@second_mcp.tool()
+ async def my_tool():
+     ...
+ ```
+@@ -393,7 +394,9 @@ async def my_tool():
+ in urls.py 
+ ```python
+ ...
+-    path("altmcp", MCPServerStreamableHttpView.as_view(mcp_server=second_server))
++from yourapp.mcp import second_mcp
++...
++path("altmcp", MCPServerStreamableHttpView.as_view(mcp_server=second_mcp))
+ ...
+ ```
+ 
+
+From 8283fa4fe7516a6c873db49931c248faee0fbeee Mon Sep 17 00:00:00 2001
+From: Vladyslav Burzakovskyy <vladislav.burzakovskij@satoshilabs.com>
+Date: Wed, 18 Jun 2025 23:39:09 +0200
+Subject: [PATCH 2/2] update(examples): add seconary MCP usage to the example
+ bird app
+
+---
+ examples/mcpexample/bird_counter/mcp.py | 9 +++++++++
+ examples/mcpexample/mcpexample/urls.py  | 5 +++--
+ 2 files changed, 12 insertions(+), 2 deletions(-)
+
+diff --git a/examples/mcpexample/bird_counter/mcp.py b/examples/mcpexample/bird_counter/mcp.py
+index 97fc702..25d3f84 100644
+--- a/examples/mcpexample/bird_counter/mcp.py
++++ b/examples/mcpexample/bird_counter/mcp.py
+@@ -66,6 +66,15 @@ async def get_species_count(name : str):
+ 
+     return ret.count
+ 
++# To create a secondary MCP endpoint with its own isolated toolset, you can use the DjangoMCP constructor
++from mcp_server.djangomcp import DjangoMCP
++
++second_mcp = DjangoMCP(name="altserver")
++
++@second_mcp.tool()
++async def get_bird_news():
++    """ Get the latest bird news """
++    return "Scientists have discovered a new bird species!"
+ 
+ drf_publish_create_mcp_tool(LocationAPIView)
+ 
+diff --git a/examples/mcpexample/mcpexample/urls.py b/examples/mcpexample/mcpexample/urls.py
+index c94a1b6..41d2334 100644
+--- a/examples/mcpexample/mcpexample/urls.py
++++ b/examples/mcpexample/mcpexample/urls.py
+@@ -21,10 +21,11 @@
+ from rest_framework.permissions import IsAuthenticated
+ 
+ from mcp_server.views import MCPServerStreamableHttpView
++from bird_counter.mcp import second_mcp
+ 
+ urlpatterns = [
+     path("admin/", admin.site.urls),
+     path("", include('mcp_server.urls')),
+-    path("mcpunsecured", MCPServerStreamableHttpView.as_view())
+-
++    path("mcpunsecured", MCPServerStreamableHttpView.as_view()),
++    path("altmcp", MCPServerStreamableHttpView.as_view(mcp_server=second_mcp))
+ ]

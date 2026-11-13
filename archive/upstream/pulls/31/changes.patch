@@ -1,0 +1,22 @@
+From 567f8cb254b5c3281d1377f91a74de372d282b8d Mon Sep 17 00:00:00 2001
+From: Thomas Aglassinger <roskakori@users.sourceforge.net>
+Date: Tue, 22 Jul 2025 10:55:24 +0200
+Subject: [PATCH] Remove confusing comment
+
+This comment seems to be from somewhere else because ` add()` does not start with an underscore.
+---
+ README.md | 1 -
+ 1 file changed, 1 deletion(-)
+
+diff --git a/README.md b/README.md
+index 47a5350..b6e3161 100644
+--- a/README.md
++++ b/README.md
+@@ -105,7 +105,6 @@ from mcp_server import MCPToolset
+ from django.core.mail import send_mail
+ 
+ class MyAITools(MCPToolset):
+-    # This method will not be published as a tool because it starts with _
+     def add(self, a: int, b: int) -> list[dict]:
+         """A service to add two numbers together"""
+         return a+b

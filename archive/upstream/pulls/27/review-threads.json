@@ -1,0 +1,57 @@
+[
+  {
+    "data": {
+      "repository": {
+        "pullRequest": {
+          "reviewThreads": {
+            "nodes": [
+              {
+                "id": "PRRT_kwDOOns7hc5TgAm9",
+                "isResolved": false,
+                "isOutdated": false,
+                "path": "mcp_server/djangomcp.py",
+                "line": 491,
+                "startLine": 491,
+                "diffSide": "RIGHT",
+                "comments": {
+                  "nodes": [
+                    {
+                      "id": "PRRC_kwDOOns7hc6B2V7R",
+                      "databaseId": 2178506449,
+                      "author": {
+                        "login": "omarbenhamid"
+                      },
+                      "body": "Manipulating original_request is not good as it manipulates the actual django request made by the MCP Client to the MCP Server. The original request must remain protected-write inside the view.\r\n\r\nWhy don't you just keep the _DRFRequestWrapper instance ? I request.user is missing just set it in the __init__ of the _DRFRequestWrapper ",
+                      "createdAt": "2025-07-01T21:00:13Z",
+                      "updatedAt": "2025-07-01T21:00:13Z",
+                      "url": "https://github.com/gts360/django-mcp-server/pull/27#discussion_r2178506449"
+                    },
+                    {
+                      "id": "PRRC_kwDOOns7hc6B4wGJ",
+                      "databaseId": 2179137929,
+                      "author": {
+                        "login": "Artui"
+                      },
+                      "body": "Okay, maybe there's some confusion. \nDjango request object and DRF request object are different. DRF request has a smaller \"lifespan\" in this context, as it's instantiated on each view \"dispatch\" and contains Django request. \nWhat the lib is doing currently is wrapping Django (not DRF!) request into _DRFRequestWrapper and passing it down into a view, like it's a Django request. Which makes the view dispatch method generate a new DRF request. \n\nAnother reason for using the original DRF request is that all manipulations that middlewares performed on the original request and all the data that might've been added (arbitrary fields needed down the line) are preserved. Otherwise - how do you propose adding field \"very_important_marker\" (for example) to the _DRFWrapperRequest without hooks or anything like that?\n\nThis solution is simply cleaner as it preserves so many things from the original, already authorized and \"enhanced\" request ",
+                      "createdAt": "2025-07-02T05:21:10Z",
+                      "updatedAt": "2025-07-02T05:21:10Z",
+                      "url": "https://github.com/gts360/django-mcp-server/pull/27#discussion_r2179137929"
+                    }
+                  ],
+                  "pageInfo": {
+                    "hasNextPage": false,
+                    "endCursor": "Y3Vyc29yOnYyOpK0MjAyNS0wNy0wMlQwNToyMToxMFrOgeMBiQ=="
+                  }
+                }
+              }
+            ],
+            "pageInfo": {
+              "hasNextPage": false,
+              "endCursor": "Y3Vyc29yOnYyOpK0MjAyNS0wNy0wMVQyMTowMDoxM1rOU4AJvQ=="
+            }
+          }
+        }
+      }
+    }
+  }
+]

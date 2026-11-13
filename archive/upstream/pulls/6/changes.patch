@@ -1,0 +1,206 @@
+From bf375a8000f82b247ecf20e38694dcd0e3530178 Mon Sep 17 00:00:00 2001
+From: csalom <csalom@apsl.net>
+Date: Wed, 21 May 2025 13:59:47 +0200
+Subject: [PATCH 1/2] feat: add drf publish list tool
+
+---
+ examples/mcpexample/bird_counter/mcp.py   |  6 ++-
+ examples/mcpexample/bird_counter/views.py |  9 +++-
+ mcp_server/__init__.py                    |  3 +-
+ mcp_server/djangomcp.py                   | 61 ++++++++++++++++++++++-
+ 4 files changed, 74 insertions(+), 5 deletions(-)
+
+diff --git a/examples/mcpexample/bird_counter/mcp.py b/examples/mcpexample/bird_counter/mcp.py
+index 5ac4f8c..ff69abb 100644
+--- a/examples/mcpexample/bird_counter/mcp.py
++++ b/examples/mcpexample/bird_counter/mcp.py
+@@ -1,11 +1,11 @@
+ from rest_framework.serializers import ModelSerializer
+ 
+ from mcp_server import MCPToolset, drf_serialize_output, drf_publish_create_mcp_tool, drf_publish_update_mcp_tool, \
+-    drf_publish_destroy_mcp_tool
++    drf_publish_destroy_mcp_tool, drf_publish_list_mcp_tool
+ from mcp_server import ModelQueryToolset
+ from .models import Bird, Location, City
+ from .serializers import BirdSerializer
+-from .views import LocationAPIView, LocationAPIUpdateView
++from .views import LocationAPIView, LocationAPIUpdateView, LocationAPIListView
+ 
+ 
+ class BirdQuery(ModelQueryToolset):
+@@ -69,3 +69,5 @@ async def get_species_count(name : str):
+ drf_publish_update_mcp_tool(LocationAPIUpdateView)
+ 
+ drf_publish_destroy_mcp_tool(LocationAPIUpdateView, instructions="A tool to delete a location")
++
++drf_publish_list_mcp_tool(LocationAPIListView, instructions="A tool to list all locations")
+diff --git a/examples/mcpexample/bird_counter/views.py b/examples/mcpexample/bird_counter/views.py
+index 1df6a7e..902bfb2 100644
+--- a/examples/mcpexample/bird_counter/views.py
++++ b/examples/mcpexample/bird_counter/views.py
+@@ -1,5 +1,5 @@
+ from django.shortcuts import render
+-from rest_framework.generics import UpdateAPIView, RetrieveUpdateDestroyAPIView, CreateAPIView
++from rest_framework.generics import UpdateAPIView, RetrieveUpdateDestroyAPIView, CreateAPIView, ListAPIView
+ from rest_framework.mixins import DestroyModelMixin
+ from rest_framework.serializers import ModelSerializer
+ 
+@@ -32,3 +32,10 @@ class LocationAPIUpdateView(RetrieveUpdateDestroyAPIView):
+     serializer_class = LocationSerializer
+ 
+ 
++class LocationAPIListView(ListAPIView):
++    """
++    API view to list all Location instances.
++    """
++    queryset = Location.objects.all()
++    serializer_class = LocationSerializer
++
+diff --git a/mcp_server/__init__.py b/mcp_server/__init__.py
+index d858d66..d2cac5b 100644
+--- a/mcp_server/__init__.py
++++ b/mcp_server/__init__.py
+@@ -1,4 +1,5 @@
+ from .djangomcp import global_mcp_server as mcp_server
+ from .djangomcp import MCPToolset, ModelQueryToolset
+ from .djangomcp import (drf_serialize_output, drf_publish_create_mcp_tool,
+-                        drf_publish_update_mcp_tool, drf_publish_destroy_mcp_tool)
+\ No newline at end of file
++                        drf_publish_update_mcp_tool, drf_publish_destroy_mcp_tool,
++                        drf_publish_list_mcp_tool)
+\ No newline at end of file
+diff --git a/mcp_server/djangomcp.py b/mcp_server/djangomcp.py
+index b94edf0..cc7acc9 100644
+--- a/mcp_server/djangomcp.py
++++ b/mcp_server/djangomcp.py
+@@ -23,7 +23,7 @@
+ from asgiref.wsgi import WsgiToAsgi
+ from mcp.types import AnyFunction, ToolAnnotations
+ from rest_framework.generics import GenericAPIView
+-from rest_framework.mixins import RetrieveModelMixin, CreateModelMixin, UpdateModelMixin, DestroyModelMixin
++from rest_framework.mixins import RetrieveModelMixin, CreateModelMixin, UpdateModelMixin, DestroyModelMixin, ListModelMixin
+ from rest_framework.serializers import Serializer
+ from starlette.types import Scope, Receive, Send
+ from starlette.datastructures import Headers
+@@ -249,6 +249,22 @@ async def _dumb_create(body: dict):
+         # Extract schema for a specific serializer manually
+         tool.parameters['properties']['body'] = view_class.schema.map_serializer(view_class.serializer_class())
+ 
++    def register_drf_list_tool(self, view_class: type(GenericAPIView), name=None, instructions=None):
++        assert instructions or view_class.__doc__, "You need to provide instructions or the class must have a docstring"
++
++        async def _dumb_list(body: dict):
++            pass
++
++        tool = self._tool_manager.add_tool(
++            fn=_dumb_list,
++            name=name or f"{view_class.__name__}_ListTool",
++            description=instructions or view_class.__doc__
++        )
++        tool.fn = sync_to_async(_DRFListAPIViewCallerTool(self, view_class))
++
++        # Extract schema for a specific serializer manually
++        # tool.parameters['properties']['body'] = view_class.schema.map_serializer(view_class.serializer_class())
++
+     def register_drf_update_tool(self, view_class: type(GenericAPIView), name=None, instructions=None):
+         assert instructions or view_class.__doc__, "You need to provide instructions or the class must have a docstring"
+ 
+@@ -586,6 +602,30 @@ def __call__(self, body: dict):
+             raise
+ 
+ 
++class _DRFListAPIViewCallerTool:
++    def __init__(self, mcp_server, view_class):
++        if not issubclass(view_class, ListModelMixin):
++            raise ValueError(f"{view_class} must be a subclass of DRF ListModelMixin")
++        self.mcp_server = mcp_server
++        self.view_class = view_class
++        def raise_exception(exp):
++            raise exp
++        # Disable built in tauth
++        self.view = view_class.as_view(filter_backends=[], authentication_classes=[],
++                                       handle_exception=raise_exception)
++
++    def __call__(self, body: dict):
++        # Create a request
++        request = _DRFRequestWrapper(self.mcp_server, django_request_ctx.get(), "GET", id=id)
++
++        # Create the view
++        try:
++            return self.view(request).data
++        except:
++            logger.exception("Error in DRF tool invocation")
++            raise
++
++
+ class _DRFUpdateAPIViewCallerTool:
+     def __init__(self, mcp_server, view_class):
+         if not issubclass(view_class, UpdateModelMixin):
+@@ -657,6 +697,25 @@ def decorator(view_class):
+         return decorator
+ 
+ 
++def drf_publish_list_mcp_tool(*args, name=None, instructions=None, server=None):
++    """
++    Function or Decorator to register a DRF ListModelMixin view as a MCP Toolset.
++
++    :param instructions: Instructions to provide to the MCP client.
++    :param server: The server to use, if not set, the global one will be used.
++    :return:
++    """
++    assert len(args) <= 1, "You must provide the DRF view or nothing as argument"
++    def decorator(view_class):
++        (server or global_mcp_server).register_drf_list_tool(view_class, name=name, instructions=instructions)
++        return view_class
++
++    if args:
++        decorator(args[0])
++    else:
++        return decorator
++
++
+ def drf_publish_update_mcp_tool(*args, name=None, instructions=None, server=None):
+     """
+     Function or Decorator to register a DRF UpdateModelMixin view as a MCP Toolset.
+
+From d0c0e461dabcf7e835ec63aa6113118bfb8dec17 Mon Sep 17 00:00:00 2001
+From: csalom <csalom@apsl.net>
+Date: Wed, 21 May 2025 14:03:46 +0200
+Subject: [PATCH 2/2] feat: add drf publish list tool
+
+---
+ mcp_server/djangomcp.py | 7 ++-----
+ 1 file changed, 2 insertions(+), 5 deletions(-)
+
+diff --git a/mcp_server/djangomcp.py b/mcp_server/djangomcp.py
+index cc7acc9..738d3a3 100644
+--- a/mcp_server/djangomcp.py
++++ b/mcp_server/djangomcp.py
+@@ -252,7 +252,7 @@ async def _dumb_create(body: dict):
+     def register_drf_list_tool(self, view_class: type(GenericAPIView), name=None, instructions=None):
+         assert instructions or view_class.__doc__, "You need to provide instructions or the class must have a docstring"
+ 
+-        async def _dumb_list(body: dict):
++        async def _dumb_list():
+             pass
+ 
+         tool = self._tool_manager.add_tool(
+@@ -262,9 +262,6 @@ async def _dumb_list(body: dict):
+         )
+         tool.fn = sync_to_async(_DRFListAPIViewCallerTool(self, view_class))
+ 
+-        # Extract schema for a specific serializer manually
+-        # tool.parameters['properties']['body'] = view_class.schema.map_serializer(view_class.serializer_class())
+-
+     def register_drf_update_tool(self, view_class: type(GenericAPIView), name=None, instructions=None):
+         assert instructions or view_class.__doc__, "You need to provide instructions or the class must have a docstring"
+ 
+@@ -614,7 +611,7 @@ def raise_exception(exp):
+         self.view = view_class.as_view(filter_backends=[], authentication_classes=[],
+                                        handle_exception=raise_exception)
+ 
+-    def __call__(self, body: dict):
++    def __call__(self):
+         # Create a request
+         request = _DRFRequestWrapper(self.mcp_server, django_request_ctx.get(), "GET", id=id)
+ 

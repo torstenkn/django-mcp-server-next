@@ -1,0 +1,22 @@
+From 49176efdced05f0f343fe0ac15e42d85198536dc Mon Sep 17 00:00:00 2001
+From: Thomas Aglassinger <roskakori@users.sourceforge.net>
+Date: Thu, 25 Sep 2025 09:05:34 +0200
+Subject: [PATCH] Fix typo in pipeline DSL specification
+
+---
+ mcp_server/query_tool.py | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff --git a/mcp_server/query_tool.py b/mcp_server/query_tool.py
+index 294e58d..ba3717f 100644
+--- a/mcp_server/query_tool.py
++++ b/mcp_server/query_tool.py
+@@ -127,7 +127,7 @@ def generate_json_schema(model, fields=None, exclude=None):
+ 
+ 1. $lookup: Joins another collection :.
+   - "from" must refer to a model name listed in ref in the schema (if defined).
+-  - "localField" must be a field path on the base colletion or a previous $lookup alias.
++  - "localField" must be a field path on the base collection or a previous $lookup alias.
+   - "foreignField" must be "_id"
+   - "as" defines an alias used in subsequent $match and $lookup stages as a prefix (e.g., alias.field).
+ 2. $match: Filter documents using comparison and logical operators.

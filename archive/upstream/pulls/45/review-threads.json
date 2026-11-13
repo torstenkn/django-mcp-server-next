@@ -1,0 +1,57 @@
+[
+  {
+    "data": {
+      "repository": {
+        "pullRequest": {
+          "reviewThreads": {
+            "nodes": [
+              {
+                "id": "PRRT_kwDOOns7hc5a_C4_",
+                "isResolved": true,
+                "isOutdated": true,
+                "path": "mcp_server/djangomcp.py",
+                "line": null,
+                "startLine": null,
+                "diffSide": "RIGHT",
+                "comments": {
+                  "nodes": [
+                    {
+                      "id": "PRRC_kwDOOns7hc6MkL99",
+                      "databaseId": 2358296445,
+                      "author": {
+                        "login": "omarbenhamid"
+                      },
+                      "body": "If you expect some specific Exception, please document why it is ignored and try to be more specific on Exception class. If no specific exception is expected just remove the exception handling.\r\n\r\nIn case of \"unknown error\", the developer will get it and fix it or disable the global instructions.",
+                      "createdAt": "2025-09-18T09:58:36Z",
+                      "updatedAt": "2025-09-18T09:58:36Z",
+                      "url": "https://github.com/gts360/django-mcp-server/pull/45#discussion_r2358296445"
+                    },
+                    {
+                      "id": "PRRC_kwDOOns7hc6MoTy0",
+                      "databaseId": 2359377076,
+                      "author": {
+                        "login": "ant-ms"
+                      },
+                      "body": "I removed the try catch, thanks a ton for the feedback!\r\n\r\n(My reasoning for including this was that it's enabled by default and if `add_tool` has issues it shouldn't fail. However, reflecting on this 1 month later, if `add_tool` doesn't work then there is kind of no MCP server left anymore anyway, so you are totally right)",
+                      "createdAt": "2025-09-18T13:41:43Z",
+                      "updatedAt": "2025-09-18T13:41:43Z",
+                      "url": "https://github.com/gts360/django-mcp-server/pull/45#discussion_r2359377076"
+                    }
+                  ],
+                  "pageInfo": {
+                    "hasNextPage": false,
+                    "endCursor": "Y3Vyc29yOnYyOpK0MjAyNS0wOS0xOFQxMzo0MTo0M1rOjKE8tA=="
+                  }
+                }
+              }
+            ],
+            "pageInfo": {
+              "hasNextPage": false,
+              "endCursor": "Y3Vyc29yOnYyOpK0MjAyNS0wOS0xOFQwOTo1ODozNlrOWvwuPw=="
+            }
+          }
+        }
+      }
+    }
+  }
+]

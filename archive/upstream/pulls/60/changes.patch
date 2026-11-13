@@ -1,0 +1,83 @@
+From e71e60f8dbf726bb991d50b48c25596c8a13f35f Mon Sep 17 00:00:00 2001
+From: Mathias Fernandes <mathias.silva.fernandes@gmail.com>
+Date: Fri, 13 Mar 2026 19:54:55 -0300
+Subject: [PATCH] feat: Allow configuration of a custom `DjangoMCP` server
+ class and document its usage.
+
+---
+ README.md               | 23 +++++++++++++++++++++++
+ mcp_server/djangomcp.py | 13 ++++++++++++-
+ 2 files changed, 35 insertions(+), 1 deletion(-)
+
+diff --git a/README.md b/README.md
+index cf40b17..55ecf4e 100644
+--- a/README.md
++++ b/README.md
+@@ -418,6 +418,27 @@ MCPServerStreamableHttpView.as_view(permission_classes=[IsAuthenticated], authen
+ ...
+ ```
+ 
++### Custom MCP Server Class
++
++You can create a custom MCP server class by subclassing `DjangoMCP` and configuring it in your settings:
++
++In your `mcp.py` or any module:
++```python
++from mcp_server.djangomcp import DjangoMCP
++
++class CustomMCPServer(DjangoMCP):
++    def register_drf_list_tool(self, ...):
++        # Custom tool registration
++        ...        
++```
++
++In `settings.py`:
++```python
++DJANGO_MCP_SERVER_CLASS = "yourapp.mcp.CustomMCPServer"
++```
++
++This allows you to customize the MCP server behavior for your specific needs.
++
+ ## Testing
+ 
+ ### The server
+@@ -469,6 +490,8 @@ Refer to this [list of clients](https://modelcontextprotocol.io/clients)
+    - instructions: global instructions
+    - stateless : when set to 'True' the server will not manage sessions 
+ 
++- **DJANGO_MCP_SERVER_CLASS** (default="mcp_server.djangomcp.DjangoMCP") a dotted path to a custom MCP server class. The class must be a subclass of `DjangoMCP`. This allows you to customize the MCP server behavior by creating your own subclass.
++
+ - **DJANGO_MCP_AUTHENTICATION_CLASSES** (default to no authentication) a list of reference to Django Rest Framework authentication classes to enfors in the main MCP view.
+ - **DJANGO_MCP_GET_SERVER_INSTRUCTIONS_TOOL** (default=True) if true a tool will be offered to obtain global instruction and tools will instruct the agent to use it, as agents do not always have the MCP server global instructions included in their system prompt.
+ - **DJANGO_MCP_ENDPOINT** (default="mcp") a string indicating the url endpoint used by the server. If you want it to have a trailing slash, for example, set it to "mcp/"
+diff --git a/mcp_server/djangomcp.py b/mcp_server/djangomcp.py
+index 179f71a..8555d17 100644
+--- a/mcp_server/djangomcp.py
++++ b/mcp_server/djangomcp.py
+@@ -20,6 +20,8 @@
+ from rest_framework.test import APIRequestFactory
+ from starlette.datastructures import Headers
+ from starlette.types import Scope, Receive, Send
++from django.utils.module_loading import import_string
++from django.core.exceptions import ImproperlyConfigured
+ 
+ if TYPE_CHECKING:
+     pass
+@@ -386,7 +388,16 @@ async def _dumb_delete(id):
+         tool.fn = sync_to_async(_DRFDeleteAPIViewCallerTool(self, view_class, actions=actions))
+ 
+ 
+-global_mcp_server = DjangoMCP(**getattr(settings, 'DJANGO_MCP_GLOBAL_SERVER_CONFIG', {}))
++_mcp_server_class = import_string(
++    getattr(settings, 'DJANGO_MCP_SERVER_CLASS', 'mcp_server.djangomcp.DjangoMCP')
++)
++
++if not issubclass(_mcp_server_class, DjangoMCP):
++    raise ImproperlyConfigured(
++        f"DJANGO_MCP_SERVER_CLASS must be a subclass of DjangoMCP, got {_mcp_server_class}"
++    )
++
++global_mcp_server = _mcp_server_class(**getattr(settings, 'DJANGO_MCP_GLOBAL_SERVER_CONFIG', {}))
+ 
+ 
+ class ToolsetMeta(type):

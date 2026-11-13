@@ -1,0 +1,67 @@
+{
+  "72": [
+    "P0",
+    "Request changes",
+    "Partial security fix; reproduced excluded-field leak via $group/$max and search oracle. Validate $group/$sort/$search/$text, pk aliases and relation traversal consistently. No regression tests in contribution. Overlaps #66."
+  ],
+  "66": [
+    "P0",
+    "Request changes",
+    "13 tests pass with #70, but reproduced empty allowed_fields returning all columns. Dotted sources/pk exemptions and aggregate/filter side channels need tests and fail-closed policy. Overlaps #72; reconcile together."
+  ],
+  "70": [
+    "P0",
+    "Baseline adopted",
+    "Original commits are the ancestor of next; no duplicate PR. MCP 2.3.0/Django 5.2: eight original tests plus successor protocol smoke pass. Minimum SDK and HTTP/session/STDIO coverage still required."
+  ],
+  "68": [
+    "P1",
+    "Merge after targeted regression",
+    "Small correct Count(id) -> Count(pk) fix. Clean with #70; eight existing tests pass but lack custom-PK cases. Add UUID/string PK tests for $sum:1 and $count:1. Low security risk; touches same query engine as #66/#72."
+  ],
+  "67": [
+    "P1",
+    "Adapt and test",
+    "Textual conflicts with #70 in constructor and dependencies. Original tests reference _mcp_server and camelCase Icon metadata. Port to MCPServer keyword-only instructions, _lowlevel_server and MCP 2 Icon fields; never downgrade SDK."
+  ],
+  "60": [
+    "P2",
+    "Request changes",
+    "Clean with #70, existing eight tests pass. Custom subclass import during module initialization can produce circular imports (especially documented app.mcp path); non-class values raise TypeError. Add startup/import-order and invalid-setting tests. Settings must remain trusted."
+  ],
+  "63": [
+    "P2",
+    "Request changes: security",
+    "Clean with #70, existing eight tests pass, no feature regression tests. _resolve_queryset falls back to Model.objects.all(), bypassing request-scoped get_queryset; caller directly serializes without view dispatch/permissions. Add request, tenant, permission, negative-limit and filter validation tests before use."
+  ],
+  "64": [
+    "P3",
+    "Superseded; no duplicate draft",
+    "Project URLs/PEP 621 metadata are implemented in successor identity commit with attribution to this proposal. Upstream URLs would point at wrong project. Original branch archived, no duplicate feature PR."
+  ],
+  "69": [
+    "P3",
+    "Merge after docs review",
+    "Documentation spelling only, clean with #70; eight tests pass. Preserve original authorship. No security impact."
+  ],
+  "42": [
+    "P3",
+    "Defer; redesign optional integration",
+    "Schema exclusion useful, but introduces mandatory drf-spectacular dependency. Import cleanup overlaps #70. Require optional integration and schema tests before revival; archived branch only."
+  ],
+  "37": [
+    "P2",
+    "Defer; superseded approach",
+    "Old DRF request monkeypatch predates merged #40; changes initialize_request semantics. Reproduce on current baseline and test authentication/body parsing before revival. No blind replay."
+  ],
+  "18": [
+    "P3",
+    "Defer; documentation refresh",
+    "Historical client/proxy instructions and plan claims require revalidation; avoid importing outdated requirements. Archived branch only."
+  ],
+  "61": [
+    "P3",
+    "Do not import",
+    "Closed promotional badge contribution adds no runtime or maintenance value; archived with attribution."
+  ]
+}

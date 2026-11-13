@@ -1,0 +1,49 @@
+From f3a0daca07a4586528819fbcc29f67068430b8d4 Mon Sep 17 00:00:00 2001
+From: lairdresearch <jim@lairdresearch.com>
+Date: Tue, 8 Jul 2025 21:42:08 -0400
+Subject: [PATCH 1/2] added a new configuration option to settings for the
+ default endpoint for the mcp server.
+
+---
+ mcp_server/urls.py | 4 +++-
+ 1 file changed, 3 insertions(+), 1 deletion(-)
+
+diff --git a/mcp_server/urls.py b/mcp_server/urls.py
+index 7eea456..32d2923 100644
+--- a/mcp_server/urls.py
++++ b/mcp_server/urls.py
+@@ -24,8 +24,10 @@
+ 
+ 
+ # Register MCP Server View and bypass default DRF default permission / authentication classes
++base_url = getattr(settings, "DJANGO_MCP_ENDPOINT", "mcp")
++
+ urlpatterns = [
+-    path("mcp", MCPServerStreamableHttpView.as_view(
++    path(base_url, MCPServerStreamableHttpView.as_view(
+         permission_classes=[IsAuthenticated] if getattr(settings, 'DJANGO_MCP_AUTHENTICATION_CLASSES', None) else [],
+         authentication_classes=[import_string(cls) for cls in getattr(settings, 'DJANGO_MCP_AUTHENTICATION_CLASSES', [])]
+     ), name="mcp_server_streamable_http_endpoint"),
+
+From a0abb9862a48fe86bed60f4a5b27814e2279f14b Mon Sep 17 00:00:00 2001
+From: lairdresearch <jim@lairdresearch.com>
+Date: Tue, 8 Jul 2025 21:42:08 -0400
+Subject: [PATCH 2/2] added a new configuration option to settings for the
+ default endpoint for the mcp server.
+
+---
+ README.md | 1 +
+ 1 file changed, 1 insertion(+)
+
+diff --git a/README.md b/README.md
+index 47a5350..b0ead0b 100644
+--- a/README.md
++++ b/README.md
+@@ -464,6 +464,7 @@ Refer to this [list of clients](https://modelcontextprotocol.io/clients)
+ 
+ - **DJANGO_MCP_AUTHENTICATION_CLASSES** (default to no authentication) a list of reference to Django Rest Framework authentication classes to enfors in the main MCP view.
+ - **DJANGO_MCP_GET_SERVER_INSTRUCTIONS_TOOL** (default=True) if true a tool will be offered to obtain global instruction  and tools will instruct the agent o use it, as agents do not always have the MCP server glboal instructions incldued in their system prompt.
++- **DJANGO_MCP_ENDPOINT** (default="mcp") a string indicating the url endpoint used by the server. If you want it to have a trailing slash, for example, set it to "mcp/"
+ 
+ ## Roadmap
+ 

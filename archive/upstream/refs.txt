@@ -1,0 +1,7 @@
+refs/heads/fix/29-settings-fields d06d16c90e4e19ae60e3b23bbfc2215485adf7ff
+refs/heads/main 0599c7d45a242519b6bdb63775bd07228c5f70d6
+refs/tags/v0.5.2 c9b9196e85713dbe4c3e4c169de344b2fbe2eeb4
+refs/tags/v0.5.3 9ee5f50a345d615c9a6be2d1d0d289e0e8c93f60
+refs/tags/v0.5.4 6be13da2434ba0e5a414d692b999e88122b37e0d
+refs/tags/v0.5.5 b4e95f1a17737d26058bf3d07288f0995b53d8d7
+refs/tags/v0.5.6 dc959abf28a5ed7a4c80ef0b843d3647ae872289

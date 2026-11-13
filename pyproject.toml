@@ -1,15 +1,13 @@
 [project]
-name = "django-mcp-server"
-version = "0.6.0"
+name = "django-mcp-server-next"
+version = "0.6.0a1"
 description = "Django MCP Server is a Django extensions to easily enable AI Agents to interact with Django Apps through the Model Context Protocol it works equally well on WSGI and ASGI"
 authors = [
     {name = "Omar BENHAMID",email = "omar.benhamid@smart-gts.com"}
 ]
 license = {text = "MIT"}
 readme = "README.md"
-homepage = "https://github.com/omarbenhamid/django-mcp-server"
-repository = "https://github.com/omarbenhamid/django-mcp-server"
-documentation = "https://github.com/omarbenhamid/django-mcp-server"
+maintainers = [{name = "Torsten Kneuss"}]
 keywords = ["django", "mcp", "model context protocol", "tools"]
 requires-python = ">=3.10"
 dependencies = [
@@ -27,6 +25,12 @@ classifiers = [
     "License :: OSI Approved :: MIT License",
 ]
 
+[project.urls]
+Homepage = "https://github.com/torstenkn/django-mcp-server-next"
+Repository = "https://github.com/torstenkn/django-mcp-server-next"
+Issues = "https://github.com/torstenkn/django-mcp-server-next/issues"
+Upstream = "https://github.com/gts360/django-mcp-server"
+
 [build-system]
 requires = ["poetry-core>=2.0.0,<3.0.0"]
 build-backend = "poetry.core.masonry.api"
@@ -40,3 +44,7 @@ uvicorn = "^0.34.3"
 djangorestframework-csv = "^3.0.2"
 drf-excel = "^2.5.3"
 
+
+[tool.poetry]
+include = [{path = "LICENCE.md", format = ["sdist", "wheel"]}, {path = "NOTICE.md", format = ["sdist", "wheel"]}]
+exclude = ["archive", "docs", "tests", "examples", "test"]

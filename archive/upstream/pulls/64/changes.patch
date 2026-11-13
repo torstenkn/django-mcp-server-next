@@ -1,0 +1,77 @@
+From 5ba9494d8b41c6caa5c93cd6e6d78ad49885b1ad Mon Sep 17 00:00:00 2001
+From: kelvinhammond <hammond.kelvin@gmail.com>
+Date: Wed, 8 Apr 2026 22:57:06 -0400
+Subject: [PATCH] Added links for Homepage, Repository, etc for pypi sidebar.
+
+- Fixed urls in README.
+---
+ README.md      |  6 +++---
+ pyproject.toml | 17 +++++++----------
+ 2 files changed, 10 insertions(+), 13 deletions(-)
+
+diff --git a/README.md b/README.md
+index cf40b17..80b6949 100644
+--- a/README.md
++++ b/README.md
+@@ -15,7 +15,7 @@
+ ✅ Validated as a Remote Integration with Claude AI.<br/>
+ 🤖 Any MCP Client or AI Agent supporting MCP , (Google Agent Developement Kit, Claude AI, Claude Desktop ...) can interact with your application.
+ 
+-Many thanks 🙏 to [all the contributor community](https://github.com/omarbenhamid/django-mcp-server/graphs/contributors)
++Many thanks 🙏 to [all the contributor community](https://github.com/gts360/django-mcp-server/graphs/contributors)
+ 
+ Maintained ✨ with care by [Smart GTS software engineering](https://www.smart-gts.com/#contact).
+ 
+@@ -42,7 +42,7 @@ pip install django-mcp-server
+ Or directly from GitHub:
+ 
+ ```bash
+-pip install git+https://github.com/omarbenhamid/django-mcp-server.git
++pip install git+https://github.com/gts360/django-mcp-server.git
+ ```
+ 
+ ---
+@@ -486,7 +486,7 @@ Refer to this [list of clients](https://modelcontextprotocol.io/clients)
+ 
+ ## Issues
+ 
+-If you encounter bugs or have feature requests, please open an issue on [GitHub Issues](https://github.com/omarbenhamid/django-mcp-server/issues).
++If you encounter bugs or have feature requests, please open an issue on [GitHub Issues](https://github.com/gts360/django-mcp-server/issues).
+ 
+ ---
+ 
+diff --git a/pyproject.toml b/pyproject.toml
+index 915d6a6..d11234d 100644
+--- a/pyproject.toml
++++ b/pyproject.toml
+@@ -7,9 +7,9 @@ authors = [
+ ]
+ license = {text = "MIT"}
+ readme = "README.md"
+-homepage = "https://github.com/omarbenhamid/django-mcp-server"
+-repository = "https://github.com/omarbenhamid/django-mcp-server"
+-documentation = "https://github.com/omarbenhamid/django-mcp-server"
++homepage = "https://github.com/gts360/django-mcp-server"
++repository = "https://github.com/gts360/django-mcp-server"
++documentation = "https://github.com/gts360/django-mcp-server"
+ keywords = ["django", "mcp", "model context protocol", "tools"]
+ requires-python = ">=3.10"
+ dependencies = [
+@@ -19,13 +19,10 @@ dependencies = [
+     "inflection (>=0.5.1,<0.6.0)",
+     "uritemplate (>=4.1.1,<5.0.0)",
+ ]
+-classifiers = [
+-    "Framework :: Django",
+-    "Framework :: Django :: 4",
+-    "Framework :: Django :: 5",
+-    "Programming Language :: Python :: 3",
+-    "License :: OSI Approved :: MIT License",
+-]
++[project.urls]
++Homepage = "https://github.com/gts360/django-mcp-server"
++Repository = "https://github.com/gts360/django-mcp-server"
++Issues = "https://github.com/gts360/django-mcp-server/issues"
+ 
+ [build-system]
+ requires = ["poetry-core>=2.0.0,<3.0.0"]

@@ -1,0 +1,302 @@
+[
+  {
+    "data": {
+      "repository": {
+        "pullRequest": {
+          "reviewThreads": {
+            "nodes": [
+              {
+                "id": "PRRT_kwDOOns7hc5S_zZ5",
+                "isResolved": true,
+                "isOutdated": false,
+                "path": "mcp_server/djangomcp.py",
+                "line": 654,
+                "startLine": 654,
+                "diffSide": "RIGHT",
+                "comments": {
+                  "nodes": [
+                    {
+                      "id": "PRRC_kwDOOns7hc6BG5vr",
+                      "databaseId": 2166070251,
+                      "author": {
+                        "login": "omarbenhamid"
+                      },
+                      "body": "please document \"actions\" in docstring and add type hint if applicable",
+                      "createdAt": "2025-06-25T08:03:37Z",
+                      "updatedAt": "2025-06-25T08:50:19Z",
+                      "url": "https://github.com/gts360/django-mcp-server/pull/23#discussion_r2166070251"
+                    },
+                    {
+                      "id": "PRRC_kwDOOns7hc6BHvmg",
+                      "databaseId": 2166290848,
+                      "author": {
+                        "login": "Artui"
+                      },
+                      "body": "Done",
+                      "createdAt": "2025-06-25T09:41:26Z",
+                      "updatedAt": "2025-06-25T09:41:26Z",
+                      "url": "https://github.com/gts360/django-mcp-server/pull/23#discussion_r2166290848"
+                    }
+                  ],
+                  "pageInfo": {
+                    "hasNextPage": false,
+                    "endCursor": "Y3Vyc29yOnYyOpK0MjAyNS0wNi0yNVQwOTo0MToyNlrOgR75oA=="
+                  }
+                }
+              },
+              {
+                "id": "PRRT_kwDOOns7hc5S_zkC",
+                "isResolved": true,
+                "isOutdated": false,
+                "path": "mcp_server/djangomcp.py",
+                "line": 625,
+                "startLine": 625,
+                "diffSide": "RIGHT",
+                "comments": {
+                  "nodes": [
+                    {
+                      "id": "PRRC_kwDOOns7hc6BG5-Z",
+                      "databaseId": 2166071193,
+                      "author": {
+                        "login": "omarbenhamid"
+                      },
+                      "body": "Can you explain what actions is for ? Please document in the docstring (and readme)",
+                      "createdAt": "2025-06-25T08:04:09Z",
+                      "updatedAt": "2025-06-25T08:50:19Z",
+                      "url": "https://github.com/gts360/django-mcp-server/pull/23#discussion_r2166071193"
+                    },
+                    {
+                      "id": "PRRC_kwDOOns7hc6BHvjz",
+                      "databaseId": 2166290675,
+                      "author": {
+                        "login": "Artui"
+                      },
+                      "body": "Done",
+                      "createdAt": "2025-06-25T09:41:20Z",
+                      "updatedAt": "2025-06-25T09:41:20Z",
+                      "url": "https://github.com/gts360/django-mcp-server/pull/23#discussion_r2166290675"
+                    }
+                  ],
+                  "pageInfo": {
+                    "hasNextPage": false,
+                    "endCursor": "Y3Vyc29yOnYyOpK0MjAyNS0wNi0yNVQwOTo0MToyMFrOgR748w=="
+                  }
+                }
+              },
+              {
+                "id": "PRRT_kwDOOns7hc5S_zot",
+                "isResolved": true,
+                "isOutdated": true,
+                "path": "mcp_server/djangomcp.py",
+                "line": null,
+                "startLine": null,
+                "diffSide": "RIGHT",
+                "comments": {
+                  "nodes": [
+                    {
+                      "id": "PRRC_kwDOOns7hc6BG6FQ",
+                      "databaseId": 2166071632,
+                      "author": {
+                        "login": "omarbenhamid"
+                      },
+                      "body": "actions doc and type hint",
+                      "createdAt": "2025-06-25T08:04:23Z",
+                      "updatedAt": "2025-06-25T08:50:19Z",
+                      "url": "https://github.com/gts360/django-mcp-server/pull/23#discussion_r2166071632"
+                    },
+                    {
+                      "id": "PRRC_kwDOOns7hc6BHwEf",
+                      "databaseId": 2166292767,
+                      "author": {
+                        "login": "Artui"
+                      },
+                      "body": "Done",
+                      "createdAt": "2025-06-25T09:42:22Z",
+                      "updatedAt": "2025-06-25T09:42:22Z",
+                      "url": "https://github.com/gts360/django-mcp-server/pull/23#discussion_r2166292767"
+                    }
+                  ],
+                  "pageInfo": {
+                    "hasNextPage": false,
+                    "endCursor": "Y3Vyc29yOnYyOpK0MjAyNS0wNi0yNVQwOTo0MjoyMlrOgR8BHw=="
+                  }
+                }
+              },
+              {
+                "id": "PRRT_kwDOOns7hc5S_1Fi",
+                "isResolved": false,
+                "isOutdated": true,
+                "path": "README.md",
+                "line": null,
+                "startLine": null,
+                "diffSide": "RIGHT",
+                "comments": {
+                  "nodes": [
+                    {
+                      "id": "PRRC_kwDOOns7hc6BG8Nq",
+                      "databaseId": 2166080362,
+                      "author": {
+                        "login": "omarbenhamid"
+                      },
+                      "body": "It is in general good to avoid creating new concepts, so I would create a concept of hooks only if it has an added value in regard to other well known options. I there something you can do with you can't do with standard django middleware or @ decorator ?",
+                      "createdAt": "2025-06-25T08:09:02Z",
+                      "updatedAt": "2025-06-25T08:50:19Z",
+                      "url": "https://github.com/gts360/django-mcp-server/pull/23#discussion_r2166080362"
+                    },
+                    {
+                      "id": "PRRC_kwDOOns7hc6BHY6A",
+                      "databaseId": 2166197888,
+                      "author": {
+                        "login": "Artui"
+                      },
+                      "body": "Sure - but Django middleware is not enough here. Or rather - it works just fine, but is completely disregarded. In this piece of code particularly\r\n<img width=\"864\" alt=\"image\" src=\"https://github.com/user-attachments/assets/f1b2e0cd-be90-4b53-a1c5-542aa5377cb2\" />\r\nonly `user` and `session` is copied from the DRF request into the MCP request. In our case, for example, we have eagerly loaded permissions (based on the context of request) and also some additional entity-specific data. Those are set on request via Django middleware - but those fields are lost when processing the request via _DRFRequestWrapper, because they are not copied properly. \r\nI don't think a decorator will work here - because _DRFRequestWrapper is so \"internal\" here",
+                      "createdAt": "2025-06-25T08:58:01Z",
+                      "updatedAt": "2025-06-25T09:55:55Z",
+                      "url": "https://github.com/gts360/django-mcp-server/pull/23#discussion_r2166197888"
+                    }
+                  ],
+                  "pageInfo": {
+                    "hasNextPage": false,
+                    "endCursor": "Y3Vyc29yOnYyOpK0MjAyNS0wNi0yNVQwODo1ODowMVrOgR2OgA=="
+                  }
+                }
+              },
+              {
+                "id": "PRRT_kwDOOns7hc5S_2BE",
+                "isResolved": true,
+                "isOutdated": true,
+                "path": "README.md",
+                "line": null,
+                "startLine": null,
+                "diffSide": "RIGHT",
+                "comments": {
+                  "nodes": [
+                    {
+                      "id": "PRRC_kwDOOns7hc6BG9jS",
+                      "databaseId": 2166085842,
+                      "author": {
+                        "login": "omarbenhamid"
+                      },
+                      "body": "I wouldn't make it an option, it is natural that all permissions classes get inherited.",
+                      "createdAt": "2025-06-25T08:11:52Z",
+                      "updatedAt": "2025-06-25T08:50:19Z",
+                      "url": "https://github.com/gts360/django-mcp-server/pull/23#discussion_r2166085842"
+                    },
+                    {
+                      "id": "PRRC_kwDOOns7hc6BHwUq",
+                      "databaseId": 2166293802,
+                      "author": {
+                        "login": "Artui"
+                      },
+                      "body": "Removed",
+                      "createdAt": "2025-06-25T09:42:54Z",
+                      "updatedAt": "2025-06-25T09:42:54Z",
+                      "url": "https://github.com/gts360/django-mcp-server/pull/23#discussion_r2166293802"
+                    }
+                  ],
+                  "pageInfo": {
+                    "hasNextPage": false,
+                    "endCursor": "Y3Vyc29yOnYyOpK0MjAyNS0wNi0yNVQwOTo0Mjo1NFrOgR8FKg=="
+                  }
+                }
+              },
+              {
+                "id": "PRRT_kwDOOns7hc5S_4jW",
+                "isResolved": true,
+                "isOutdated": true,
+                "path": "mcp_server/djangomcp.py",
+                "line": null,
+                "startLine": null,
+                "diffSide": "RIGHT",
+                "comments": {
+                  "nodes": [
+                    {
+                      "id": "PRRC_kwDOOns7hc6BHBOm",
+                      "databaseId": 2166100902,
+                      "author": {
+                        "login": "omarbenhamid"
+                      },
+                      "body": "MCP is just another protocol to access the same services, so the same permissions must apply. So it is better not to allow overriding permissions.\r\nIn special cases, user can still subclass the view class with a specific one and specific permissions, but the library shall not propose this as best practice.",
+                      "createdAt": "2025-06-25T08:19:09Z",
+                      "updatedAt": "2025-06-25T08:50:19Z",
+                      "url": "https://github.com/gts360/django-mcp-server/pull/23#discussion_r2166100902"
+                    },
+                    {
+                      "id": "PRRC_kwDOOns7hc6BHXB6",
+                      "databaseId": 2166190202,
+                      "author": {
+                        "login": "Artui"
+                      },
+                      "body": "In that case it should always preserve existing permission classes. Because, currently, it's overriding the view to remove permission classes completely. I will remove the new variable and this method, and will use default permission classes in that case.",
+                      "createdAt": "2025-06-25T08:54:18Z",
+                      "updatedAt": "2025-06-25T08:54:18Z",
+                      "url": "https://github.com/gts360/django-mcp-server/pull/23#discussion_r2166190202"
+                    }
+                  ],
+                  "pageInfo": {
+                    "hasNextPage": false,
+                    "endCursor": "Y3Vyc29yOnYyOpK0MjAyNS0wNi0yNVQwODo1NDoxOFrOgR1weg=="
+                  }
+                }
+              },
+              {
+                "id": "PRRT_kwDOOns7hc5TAEFq",
+                "isResolved": true,
+                "isOutdated": true,
+                "path": "mcp_server/djangomcp.py",
+                "line": null,
+                "startLine": null,
+                "diffSide": "RIGHT",
+                "comments": {
+                  "nodes": [
+                    {
+                      "id": "PRRC_kwDOOns7hc6BHSoL",
+                      "databaseId": 2166172171,
+                      "author": {
+                        "login": "omarbenhamid"
+                      },
+                      "body": "We should discuss more the authentication topic :\r\nThe DJANGO_MCP_AUTHENTICATION_CLASSES are enforced for all the calls of MCP in standard setup, that's because they are setup as auth/permission class of the `MCPStreamableHttpView` here https://github.com/omarbenhamid/django-mcp-server/blob/main/mcp_server/urls.py\r\n\r\nYou should not override it at this step. At this step we only disable the built-in authentication of DRF so that auth is not performed two times.\r\n\r\nYou can in advanced cases, as indicated in the README, mount the MCPStreamableHttpView in your urls.py directly with your own auth/permissions classes.\r\n\r\nWhat we could do, if it is useful for your use case, is an option like \"DJANGO_MCP_KEEP_DRF_AUTH_CLASSES\" that would mean you remove \"authentication_classes\" completely from you kwargs dict, to let the view or default DRF auth classes to apply.",
+                      "createdAt": "2025-06-25T08:47:13Z",
+                      "updatedAt": "2025-06-25T08:50:19Z",
+                      "url": "https://github.com/gts360/django-mcp-server/pull/23#discussion_r2166172171"
+                    },
+                    {
+                      "id": "PRRC_kwDOOns7hc6BHi7o",
+                      "databaseId": 2166238952,
+                      "author": {
+                        "login": "Artui"
+                      },
+                      "body": "I guess the library doesn't work correctly with DRF. \r\n`return self.view(request).data` - this statement is present in all tool wrappers. And while you're passing `request` into the view, you're omitting the fact that `dispatch` is called on when you do a `.data` call\r\n<img width=\"695\" alt=\"image\" src=\"https://github.com/user-attachments/assets/c50314d9-f8b9-4998-8ec3-4a1940ce9035\" />\r\nDispatch wraps the request you passed on in another request\r\n<img width=\"624\" alt=\"image\" src=\"https://github.com/user-attachments/assets/cace307b-5fe4-4e42-9de2-f8744dda44a2\" />\r\nwhich is `rest_framework.request.Request` instance\r\nWhich, in turn, doesn't use `WSGIRequest` user instance, but tries to authenticate one more time\r\n<img width=\"787\" alt=\"image\" src=\"https://github.com/user-attachments/assets/daa1330d-7270-4ef3-a52c-01b091249b13\" />\r\nWhich works off of authentication_classes\r\n\r\nSo, in summary - while the global MCP authentication classes work for the purpose of not allowing unauthenticated users to access the server as a whole, when integrating with DRF views, a whole lot of context goes missing if auth classes are omitted from the view",
+                      "createdAt": "2025-06-25T09:17:56Z",
+                      "updatedAt": "2025-06-25T09:17:56Z",
+                      "url": "https://github.com/gts360/django-mcp-server/pull/23#discussion_r2166238952"
+                    },
+                    {
+                      "id": "PRRC_kwDOOns7hc6BHvCs",
+                      "databaseId": 2166288556,
+                      "author": {
+                        "login": "Artui"
+                      },
+                      "body": "Basically, main issue is that the library tries to bootstrap an internal DRF view call without respecting the request processing flow that DRF has. When you're doing `return self.view(request).data`, you're basically \"starting fresh\" from DRF point of view in terms of user instance being there on the DRF request object that is actually re-created down the line.",
+                      "createdAt": "2025-06-25T09:40:19Z",
+                      "updatedAt": "2025-06-25T09:40:19Z",
+                      "url": "https://github.com/gts360/django-mcp-server/pull/23#discussion_r2166288556"
+                    }
+                  ],
+                  "pageInfo": {
+                    "hasNextPage": false,
+                    "endCursor": "Y3Vyc29yOnYyOpK0MjAyNS0wNi0yNVQwOTo0MDoxOVrOgR7wrA=="
+                  }
+                }
+              }
+            ],
+            "pageInfo": {
+              "hasNextPage": false,
+              "endCursor": "Y3Vyc29yOnYyOpK0MjAyNS0wNi0yNVQwODo0NzoxM1rOUwBBag=="
+            }
+          }
+        }
+      }
+    }
+  }
+]

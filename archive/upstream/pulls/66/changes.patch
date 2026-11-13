@@ -1,0 +1,318 @@
+From 08bfc6f6251928d206e2f0bcb0ea387e4d3e9405 Mon Sep 17 00:00:00 2001
+From: noamblitz <noamblitz@gmail.com>
+Date: Mon, 20 Apr 2026 12:39:38 +0200
+Subject: [PATCH 1/2] Project default output to declared fields
+
+apply_json_mango_query now accepts allowed_fields; when the pipeline
+has no $project, the default queryset.values() call restricts to those
+fields instead of returning every concrete column on the model. Keeps
+non-serializable columns (e.g. GeoDjango PointField) out of the JSON
+renderer when the caller hasn't projected explicitly.
+
+_QueryExecutor passes ModelQueryToolset.fields minus get_excluded_fields().
+Behaviour is unchanged when `fields` is not declared on the toolset.
+---
+ examples/mcpexample/bird_counter/tests.py | 44 ++++++++++++++++++++++-
+ mcp_server/query_tool.py                  | 18 ++++++++--
+ 2 files changed, 59 insertions(+), 3 deletions(-)
+
+diff --git a/examples/mcpexample/bird_counter/tests.py b/examples/mcpexample/bird_counter/tests.py
+index e9da897..b9d47a9 100644
+--- a/examples/mcpexample/bird_counter/tests.py
++++ b/examples/mcpexample/bird_counter/tests.py
+@@ -352,4 +352,46 @@ def test_group_multi_aggregations(self):
+         self.assertEqual(5, row["max_count"])
+         self.assertEqual(3, row["min_count"])
+         self.assertEqual(2, row["count"] )
+-        self.assertEqual(4, row["average"])
+\ No newline at end of file
++        self.assertEqual(4, row["average"])
++
++
++class AllowedFieldsDefaultProjectionTest(TestCase):
++    """`allowed_fields` scopes the default (no-`$project`) projection to the
++    declared schema. Without it, `queryset.values()` returns every concrete
++    column on the model — which breaks the JSON renderer as soon as one of
++    those columns is non-serializable (e.g. GeoDjango PointField)."""
++
++    def setUp(self):
++        city = City.objects.create(name='New York', country='USA')
++        loc = Location.objects.create(name='Park', city=city)
++        Bird.objects.create(location=loc, species='Sparrow', count=5)
++        Bird.objects.create(location=loc, species='Robin', count=3)
++
++    def test_no_project_restricts_to_allowed_fields(self):
++        rows = list(query_tool.apply_json_mango_query(
++            Bird.objects.all().order_by("id"), [],
++            allowed_fields={"id", "species"},
++        ))
++        self.assertEqual(len(rows), 2)
++        for row in rows:
++            self.assertEqual(set(row.keys()), {"id", "species"})
++
++    def test_no_allowed_fields_returns_every_column(self):
++        """Backwards compatibility: when `allowed_fields` is absent, output
++        matches the pre-change behaviour (every concrete column)."""
++        rows = list(query_tool.apply_json_mango_query(Bird.objects.all().order_by("id"), []))
++        for row in rows:
++            self.assertIn("count", row)
++            self.assertIn("location_id", row)
++
++    def test_explicit_project_still_wins(self):
++        """`allowed_fields` only affects the default projection; explicit
++        `$project` continues to control output shape."""
++        rows = list(query_tool.apply_json_mango_query(
++            Bird.objects.all().order_by("id"),
++            [{"$project": {"species": 1}}],
++            allowed_fields={"id", "species"},
++        ))
++        self.assertEqual([r["species"] for r in rows], ["Sparrow", "Robin"])
++        for row in rows:
++            self.assertNotIn("id", row)
+\ No newline at end of file
+diff --git a/mcp_server/query_tool.py b/mcp_server/query_tool.py
+index ba3717f..590352c 100644
+--- a/mcp_server/query_tool.py
++++ b/mcp_server/query_tool.py
+@@ -150,7 +150,8 @@ def generate_json_schema(model, fields=None, exclude=None):
+ 
+ def apply_json_mango_query(queryset: QuerySet, pipeline: list[dict],
+                            allowed_models: list = None, extended_operators: list = None,
+-                           text_search_fields: list | str = '*'):
++                           text_search_fields: list | str = '*',
++                           allowed_fields: set | frozenset | list | tuple | None = None):
+     """
+     Apply a JSON-like query to a Django QuerySet using a subset of MangoDB aggregation pipeline syntax.
+     see pipeline_dsl_spec() for details.
+@@ -159,6 +160,7 @@ def apply_json_mango_query(queryset: QuerySet, pipeline: list[dict],
+     :param allowed_models: List of allowed models for $lookup stages. If None, all models are allowed. Can be the string name or the Model class.
+     :param extended_operators: List of Queryset API lookups to support as exetended operators. this interprets {"<field>":{"$<op>": value} as Q({field}__{op}=value)
+     :param text_search_fields: List of field names to apply `$text` full-text search to. Use "*" to apply to all CharField and TextField fields of the model. Required if `$text` is used.
++    :param allowed_fields: When a pipeline does not include `$project`, restrict the default output to these field names instead of returning every concrete column on the model. Required to keep non-serializable columns (e.g. GeoDjango PointField) out of the JSON renderer when the caller hasn't projected explicitly. When None, every column is returned — same behaviour as previous versions.
+     :return: an iterable (eventually the queryset) of JSON results.
+     """
+ 
+@@ -321,6 +323,9 @@ def apply_json_mango_query(queryset: QuerySet, pipeline: list[dict],
+         queryset = queryset.values(*projection_fields)
+         return _postprocess_projection(queryset, projection_mapping)
+ 
++    if allowed_fields:
++        return _postprocess_projection(queryset.values(*sorted(allowed_fields)), None)
++
+     return _postprocess_projection(queryset.values(), None)
+ 
+ 
+@@ -573,6 +578,14 @@ def __init__(self, context=None, request=None):
+         self.request = request
+ 
+ 
++def _allowed_fields_for(toolset_cls):
++    """Effective declared fields minus excluded fields, or None when the
++    toolset didn't declare `fields` (preserves the unrestricted default)."""
++    if toolset_cls is None or toolset_cls.fields is None:
++        return None
++    return frozenset(toolset_cls.fields) - frozenset(toolset_cls.get_excluded_fields())
++
++
+ class _QueryExecutor:
+     def __init__(self, query_tool_models, context=None, request=None):
+         self.query_tool_models = query_tool_models
+@@ -589,7 +602,8 @@ def query(self, collection : str, search_pipeline: list[dict] = []):
+         ret = list(apply_json_mango_query(qs, search_pipeline,
+                                            text_search_fields=instance.get_text_search_fields(),
+                                            allowed_models=instance.get_published_models(),
+-                                           extended_operators=instance.extra_filters))
++                                           extended_operators=instance.extra_filters,
++                                           allowed_fields=_allowed_fields_for(mql_model)))
+ 
+         if not ret:
+             if instance.output_as_resource:
+
+From 89e181991b819be2c83fae5e3ab58eb7023716d8 Mon Sep 17 00:00:00 2001
+From: noamblitz <noamblitz@gmail.com>
+Date: Mon, 20 Apr 2026 13:03:41 +0200
+Subject: [PATCH 2/2] Also strip undeclared fields from explicit $project +
+ rename test class
+MIME-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+
+The previous commit closed the no-$project path but explicit $project
+stages still leaked undeclared fields:
+  {"$project": {"street": 1}}           # direct
+  {"$project": {"renamed": "$street"}}  # rename bypass
+
+Filter the $project spec before interpretation: drop any mapping whose
+source field isn't in allowed_fields. Alias-prefixed sources
+(e.g. $loc.name) and exclusions ({_id: 0}) pass through unchanged.
+
+$match / $sort still execute against undeclared columns — that leaves
+a "does this row exist" side-channel but no value leak in output.
+
+Rename test class to UndeclaredFieldsNotReturnedTest to reflect the
+security property being pinned, and add cases for the two explicit-
+projection leak paths.
+---
+ examples/mcpexample/bird_counter/tests.py | 79 +++++++++++++++++------
+ mcp_server/query_tool.py                  | 30 ++++++++-
+ 2 files changed, 90 insertions(+), 19 deletions(-)
+
+diff --git a/examples/mcpexample/bird_counter/tests.py b/examples/mcpexample/bird_counter/tests.py
+index b9d47a9..82bc1c6 100644
+--- a/examples/mcpexample/bird_counter/tests.py
++++ b/examples/mcpexample/bird_counter/tests.py
+@@ -355,11 +355,22 @@ def test_group_multi_aggregations(self):
+         self.assertEqual(4, row["average"])
+ 
+ 
+-class AllowedFieldsDefaultProjectionTest(TestCase):
+-    """`allowed_fields` scopes the default (no-`$project`) projection to the
+-    declared schema. Without it, `queryset.values()` returns every concrete
+-    column on the model — which breaks the JSON renderer as soon as one of
+-    those columns is non-serializable (e.g. GeoDjango PointField)."""
++class UndeclaredFieldsNotReturnedTest(TestCase):
++    """Undeclared fields must never appear in query output.
++
++    `ModelQueryToolset.fields` is documented as controlling which fields are
++    published. Before this change it only affected the LLM-facing schema; the
++    default `queryset.values()` call at the end of the pipeline still returned
++    every concrete column on the model. That meant any column on any row a
++    caller could see — internal flags, audit metadata, raw geometry columns,
++    anything the toolset author deliberately left out of `fields` — was
++    reachable by simply omitting `$project`. It also made the endpoint crash
++    whenever a non-declared column was non-serializable (e.g. GeoDjango
++    PointField), since the column still reached the JSON renderer.
++
++    These tests pin the guarantee that `fields` is a real boundary: rows
++    returned from the pipeline never contain keys outside the declared set.
++    """
+ 
+     def setUp(self):
+         city = City.objects.create(name='New York', country='USA')
+@@ -367,7 +378,9 @@ def setUp(self):
+         Bird.objects.create(location=loc, species='Sparrow', count=5)
+         Bird.objects.create(location=loc, species='Robin', count=3)
+ 
+-    def test_no_project_restricts_to_allowed_fields(self):
++    def test_undeclared_fields_are_not_returned(self):
++        """The core guarantee: `count` and `location_id` exist on Bird but
++        aren't in the allowlist, so they must not leak into the output."""
+         rows = list(query_tool.apply_json_mango_query(
+             Bird.objects.all().order_by("id"), [],
+             allowed_fields={"id", "species"},
+@@ -375,18 +388,10 @@ def test_no_project_restricts_to_allowed_fields(self):
+         self.assertEqual(len(rows), 2)
+         for row in rows:
+             self.assertEqual(set(row.keys()), {"id", "species"})
++            self.assertNotIn("count", row)
++            self.assertNotIn("location_id", row)
+ 
+-    def test_no_allowed_fields_returns_every_column(self):
+-        """Backwards compatibility: when `allowed_fields` is absent, output
+-        matches the pre-change behaviour (every concrete column)."""
+-        rows = list(query_tool.apply_json_mango_query(Bird.objects.all().order_by("id"), []))
+-        for row in rows:
+-            self.assertIn("count", row)
+-            self.assertIn("location_id", row)
+-
+-    def test_explicit_project_still_wins(self):
+-        """`allowed_fields` only affects the default projection; explicit
+-        `$project` continues to control output shape."""
++    def test_explicit_project_to_declared_field_works(self):
+         rows = list(query_tool.apply_json_mango_query(
+             Bird.objects.all().order_by("id"),
+             [{"$project": {"species": 1}}],
+@@ -394,4 +399,42 @@ def test_explicit_project_still_wins(self):
+         ))
+         self.assertEqual([r["species"] for r in rows], ["Sparrow", "Robin"])
+         for row in rows:
+-            self.assertNotIn("id", row)
+\ No newline at end of file
++            self.assertNotIn("id", row)
++            self.assertNotIn("count", row)
++
++    def test_project_to_undeclared_field_is_silently_stripped(self):
++        """`$project: {count: 1}` selects an undeclared column directly. The
++        mapping is dropped before interpretation so `count` never reaches
++        the output — even though the row-level access would otherwise allow
++        reading it."""
++        rows = list(query_tool.apply_json_mango_query(
++            Bird.objects.all().order_by("id"),
++            [{"$project": {"species": 1, "count": 1}}],
++            allowed_fields={"id", "species"},
++        ))
++        for row in rows:
++            self.assertNotIn("count", row)
++            self.assertIn("species", row)
++
++    def test_project_renamed_from_undeclared_field_is_silently_stripped(self):
++        """Rename bypass: `{renamed: "$count"}` still references `count` as
++        the source. Stripping by source prevents the output key `renamed`
++        from appearing at all."""
++        rows = list(query_tool.apply_json_mango_query(
++            Bird.objects.all().order_by("id"),
++            [{"$project": {"species": 1, "renamed": "$count"}}],
++            allowed_fields={"id", "species"},
++        ))
++        for row in rows:
++            self.assertNotIn("renamed", row)
++            self.assertNotIn("count", row)
++            self.assertIn("species", row)
++
++    def test_no_allowed_fields_preserves_legacy_behaviour(self):
++        """When a toolset doesn't declare `fields`, the caller opted out of
++        the allowlist — output contains every concrete column, same as
++        previous versions. This is the escape hatch for existing callers."""
++        rows = list(query_tool.apply_json_mango_query(Bird.objects.all().order_by("id"), []))
++        for row in rows:
++            self.assertIn("count", row)
++            self.assertIn("location_id", row)
+\ No newline at end of file
+diff --git a/mcp_server/query_tool.py b/mcp_server/query_tool.py
+index 590352c..6186150 100644
+--- a/mcp_server/query_tool.py
++++ b/mcp_server/query_tool.py
+@@ -239,7 +239,10 @@ def apply_json_mango_query(queryset: QuerySet, pipeline: list[dict],
+             if any("$group" in s for s in pipeline[i+1:]):
+                 raise ValueError("$project cannot appear when pipeline contains $group :"
+                                  " please review pipeline syntax constriants.")
+-            projection_fields, projection_mapping = _interpret_projection(stage["$project"], lookup_alias_map)
++            projection_spec = stage["$project"]
++            if allowed_fields:
++                projection_spec = _strip_undeclared_from_projection(projection_spec, allowed_fields)
++            projection_fields, projection_mapping = _interpret_projection(projection_spec, lookup_alias_map)
+ 
+         elif "$group" in stage:
+             if i != len(pipeline) - 1:
+@@ -329,6 +332,31 @@ def apply_json_mango_query(queryset: QuerySet, pipeline: list[dict],
+     return _postprocess_projection(queryset.values(), None)
+ 
+ 
++def _strip_undeclared_from_projection(projection, allowed_fields):
++    """Silently drop `$project` mappings whose source field isn't declared.
++
++    Covers both forms of projection leak:
++        {"street": 1}              → source is `street`
++        {"renamed": "$street"}     → source is `street` (renamed to `renamed`)
++    In both cases the mapping is removed, so `street` never reaches the
++    output. Alias-prefixed sources (`$loc.name`) are passed through — those
++    are already gated by `$lookup` + `allowed_models`. Exclusions like
++    `{"_id": 0}` are passed through so callers can still hide `_id`.
++    """
++    filtered = {}
++    for output_field, spec in projection.items():
++        if isinstance(spec, str) and spec.startswith("$"):
++            source = spec[1:]
++            if "." in source or source in allowed_fields or source in ("_id", "pk"):
++                filtered[output_field] = spec
++        elif spec:
++            if output_field in allowed_fields or output_field in ("_id", "pk"):
++                filtered[output_field] = spec
++        else:
++            filtered[output_field] = spec
++    return filtered
++
++
+ def _interpret_projection(projection, lookup_map):
+     fields = []
+     mapping = {}

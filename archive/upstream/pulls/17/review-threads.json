@@ -1,0 +1,46 @@
+[
+  {
+    "data": {
+      "repository": {
+        "pullRequest": {
+          "reviewThreads": {
+            "nodes": [
+              {
+                "id": "PRRT_kwDOOns7hc5RbcUv",
+                "isResolved": true,
+                "isOutdated": true,
+                "path": "mcp_server/djangomcp.py",
+                "line": null,
+                "startLine": null,
+                "diffSide": "RIGHT",
+                "comments": {
+                  "nodes": [
+                    {
+                      "id": "PRRC_kwDOOns7hc5-wgaQ",
+                      "databaseId": 2126644880,
+                      "author": {
+                        "login": "omarbenhamid"
+                      },
+                      "body": "This introduces a regression : We now use `result = async_to_sync(_call_starlette_handler)(request, self.session_manager)` instead of `anyio.run` to be compatible with ASGI, please put back the original statement.",
+                      "createdAt": "2025-06-04T13:44:18Z",
+                      "updatedAt": "2025-06-04T13:44:19Z",
+                      "url": "https://github.com/gts360/django-mcp-server/pull/17#discussion_r2126644880"
+                    }
+                  ],
+                  "pageInfo": {
+                    "hasNextPage": false,
+                    "endCursor": "Y3Vyc29yOnYyOpK0MjAyNS0wNi0wNFQxMzo0NDoxOFrOfsIGkA=="
+                  }
+                }
+              }
+            ],
+            "pageInfo": {
+              "hasNextPage": false,
+              "endCursor": "Y3Vyc29yOnYyOpK0MjAyNS0wNi0wNFQxMzo0NDoxOFrOUW3FLw=="
+            }
+          }
+        }
+      }
+    }
+  }
+]

@@ -1,0 +1,32 @@
+name: Tests and packaging
+on: [push, pull_request]
+permissions:
+  contents: read
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        python: ['3.10', '3.12', '3.13']
+        django: ['>=4.2,<4.3', '>=5.2,<5.3']
+        mcp: ['==2.0.0', '>=2,<3']
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python }}
+      - run: python -m pip install . "Django${{ matrix.django }}" "mcp${{ matrix.mcp }}" pytest pytest-django djangorestframework-csv drf-excel
+      - run: python -m pytest -c examples/mcpexample/pytest.ini examples/mcpexample/bird_counter/tests.py tests -q
+        env:
+          PYTHONPATH: .:examples/mcpexample
+  package:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - run: python -m pip install build twine
+      - run: python -m build
+      - run: python -m twine check dist/*

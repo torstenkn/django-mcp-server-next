@@ -1,0 +1,46 @@
+[
+  {
+    "data": {
+      "repository": {
+        "pullRequest": {
+          "reviewThreads": {
+            "nodes": [
+              {
+                "id": "PRRT_kwDOOns7hc5QjjFT",
+                "isResolved": false,
+                "isOutdated": false,
+                "path": "mcp_server/djangomcp.py",
+                "line": 616,
+                "startLine": 616,
+                "diffSide": "RIGHT",
+                "comments": {
+                  "nodes": [
+                    {
+                      "id": "PRRC_kwDOOns7hc59cyMA",
+                      "databaseId": 2104697600,
+                      "author": {
+                        "login": "omarbenhamid"
+                      },
+                      "body": "there is no id parameter for list view. you can discard the argument, _DRFRequestWrapper is normally prepaed for this case.",
+                      "createdAt": "2025-05-23T14:17:50Z",
+                      "updatedAt": "2025-05-23T14:21:00Z",
+                      "url": "https://github.com/gts360/django-mcp-server/pull/6#discussion_r2104697600"
+                    }
+                  ],
+                  "pageInfo": {
+                    "hasNextPage": false,
+                    "endCursor": "Y3Vyc29yOnYyOpK0MjAyNS0wNS0yM1QxNDoxNzo1MFrOfXMjAA=="
+                  }
+                }
+              }
+            ],
+            "pageInfo": {
+              "hasNextPage": false,
+              "endCursor": "Y3Vyc29yOnYyOpK0MjAyNS0wNS0yM1QxNDoxNzo1MFrOUI4xUw=="
+            }
+          }
+        }
+      }
+    }
+  }
+]
